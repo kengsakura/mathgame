@@ -3,79 +3,24 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  --primary: #f97316;
-  --primary-dark: #ea580c;
-  --primary-light: #fed7aa;
-  --accent: #9ca3af;
-  --muted: #f3f4f6;
-  --border: #e5e7eb;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-primary: var(--primary);
-  --color-primary-dark: var(--primary-dark);
-  --color-primary-light: var(--primary-light);
-  --color-accent: var(--accent);
-  --color-muted: var(--muted);
-  --color-border: var(--border);
-  --font-sans: var(--font-kanit);
-  --font-mono: var(--font-jetbrains-mono);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
-    --primary: #fb923c;
-    --primary-dark: #f97316;
-    --primary-light: #ffedd5;
-    --accent: #6b7280;
-    --muted: #1f2937;
-    --border: #374151;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-kanit), "Kanit", system-ui, -apple-system, sans-serif;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-weight: 300;
-  line-height: 1.6;
-}
-
-/* ข้อความภาษาไทยทั่วไป */
-p, span, div, li, td, th, label {
-  font-weight: 300;
-}
-
-/* หัวข้อต่างๆ */
-h1 {
-  font-weight: 400;
-}
-
-h2 {
-  font-weight: 400;
-}
-
-h3 {
-  font-weight: 400;
-}
-
-h4, h5, h6 {
-  font-weight: 300;
-}
-
-/* ปุ่มและ UI elements */
-button {
-  font-weight: 400;
-}
-
-/* Input fields */
-input, textarea, select {
-  font-weight: 300;
+  font-family: Arial, Helvetica, sans-serif;
 }
