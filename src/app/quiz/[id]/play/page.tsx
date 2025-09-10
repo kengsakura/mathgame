@@ -158,6 +158,8 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
   const endGame = async () => {
     if (!quiz) return
 
+    const finalScore = gameState.score
+    
     setGameState(prev => ({
       ...prev,
       gameEnded: true,
@@ -168,7 +170,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
     await supabase.from('quiz_attempts').insert({
       quiz_id: id,
       student_name: studentName,
-      score: gameState.score,
+      score: finalScore,
       total_questions: quiz.total_questions,
       time_taken: (quiz.total_questions * quiz.time_per_question) - 
                    ((quiz.total_questions - gameState.currentQuestion - 1) * quiz.time_per_question + gameState.timeLeft)
