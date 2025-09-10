@@ -106,12 +106,12 @@ export default function QRCodePage({ params }: { params: Promise<{ id: string }>
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-4 mb-8">
-            <Button variant="outline" asChild>
-              <Link href="/admin">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                กลับหน้าครู
-              </Link>
-            </Button>
+          <Button variant="outline" asChild>
+  <Link href="/admin" className="flex items-center">
+    <ArrowLeft className="h-4 w-4 mr-2" />
+    กลับ
+  </Link>
+</Button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">QR Code สำหรับนักเรียน</h1>
               <p className="text-gray-600">ให้นักเรียนสแกนเพื่อเข้าทำข้อสอบ</p>

@@ -16,8 +16,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "เกมคณิตศาสตร์ - แยกตัวประกอบพหุนาม",
-  description: "เรียนรู้การแยกตัวประกอบของพหุนามดีกรีสองอย่างสนุกสนาน",
+  title: "เกมคณิตศาสตร์",
+  description: "เรียนรู้ ฝึกคณิตศาสตร์ อย่างสนุกสนาน",
 };
 
 export default function RootLayout({

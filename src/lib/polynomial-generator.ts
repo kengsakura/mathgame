@@ -9,7 +9,7 @@ export interface Question {
   checkAnswer?: (answer: string) => boolean
 }
 
-export type QuestionType = 'polynomial' | 'equation' | 'integer' | 'fraction' | 'power' | 'factorial' | 'function'
+export type QuestionType = 'polynomial' | 'equation' | 'integer' | 'fraction' | 'power' | 'root' | 'function'
 
 export interface GeneratorOptions {
   difficulty: 'easy' | 'medium' | 'hard'
@@ -351,8 +351,8 @@ export class MathQuestionGenerator {
         break
       case '÷':
         // ทำให้หารลงตัว
-        correctAnswer = num2
-        num1 = num2 * (Math.floor(Math.random() * 10) + 2)
+        correctAnswer = Math.floor(Math.random() * 10) + 2
+        num1 = num2 * correctAnswer
         expression = `${num1} ÷ ${num2}`
         break
       default:
@@ -650,53 +650,93 @@ export class MathQuestionGenerator {
     }
   }
 
-  // ===== สำหรับแฟกทอเรียล =====
-  private generateFactorialQuestion(difficulty: 'easy' | 'medium' | 'hard'): Question {
-    let n: number
+  // ===== สำหรับรากที่ n =====
+  private generateRootQuestion(difficulty: 'easy' | 'medium' | 'hard'): Question {
+    const rootType = [2, 3, 4][Math.floor(Math.random() * 3)] // รากที่ 2, 3, หรือ 4
+    let baseNumber: number
     
-    if (difficulty === 'easy') {
-      // ง่าย: 3!, 4!, 5!
-      n = [3, 4, 5][Math.floor(Math.random() * 3)]
-    } else if (difficulty === 'medium') {
-      // ปานกลาง: 6!, 7!
-      n = [6, 7][Math.floor(Math.random() * 2)]
-    } else {
-      // ยาก: 8!, 0!, 1!, 2!
-      n = [0, 1, 2, 8][Math.floor(Math.random() * 4)]
+    if (rootType === 2) { // รากที่ 2
+      if (difficulty === 'easy') {
+        // ง่าย: กำลังสองที่สมบูรณ์ไม่เกิน 100
+        const perfectSquares = [4, 9, 16, 25, 36, 49, 64, 81, 100]
+        baseNumber = perfectSquares[Math.floor(Math.random() * perfectSquares.length)]
+      } else if (difficulty === 'medium') {
+        // ปานกลาง: กำลังสองที่สมบูรณ์ไม่เกิน 400
+        const perfectSquares = [121, 144, 169, 196, 225, 256, 289, 324, 361, 400]
+        baseNumber = perfectSquares[Math.floor(Math.random() * perfectSquares.length)]
+      } else {
+        // ยาก: กำลังสองที่สมบูรณ์ไม่เกิน 1000
+        const perfectSquares = [441, 484, 529, 576, 625, 676, 729, 784, 841, 900, 961]
+        baseNumber = perfectSquares[Math.floor(Math.random() * perfectSquares.length)]
+      }
+    } else if (rootType === 3) { // รากที่ 3
+      if (difficulty === 'easy') {
+        // ง่าย: กำลังสามที่สมบูรณ์ไม่เกิน 64
+        const perfectCubes = [8, 27, 64]
+        baseNumber = perfectCubes[Math.floor(Math.random() * perfectCubes.length)]
+      } else if (difficulty === 'medium') {
+        // ปานกลาง: กำลังสามที่สมบูรณ์ไม่เกิน 216
+        const perfectCubes = [125, 216]
+        baseNumber = perfectCubes[Math.floor(Math.random() * perfectCubes.length)]
+      } else {
+        // ยาก: กำลังสามที่สมบูรณ์ไม่เกิน 1000
+        const perfectCubes = [343, 512, 729, 1000]
+        baseNumber = perfectCubes[Math.floor(Math.random() * perfectCubes.length)]
+      }
+    } else { // รากที่ 4
+      if (difficulty === 'easy') {
+        // ง่าย: กำลังสี่ที่สมบูรณ์ไม่เกิน 81
+        const perfectFourths = [16, 81]
+        baseNumber = perfectFourths[Math.floor(Math.random() * perfectFourths.length)]
+      } else if (difficulty === 'medium') {
+        // ปานกลาง: กำลังสี่ที่สมบูรณ์ไม่เกิน 625
+        const perfectFourths = [256, 625]
+        baseNumber = perfectFourths[Math.floor(Math.random() * perfectFourths.length)]
+      } else {
+        // ยาก: กำลังสี่ที่สมบูรณ์ไม่เกิน 1000
+        const perfectFourths = [16, 81, 256, 625]
+        baseNumber = perfectFourths[Math.floor(Math.random() * perfectFourths.length)]
+      }
     }
     
-    const correctAnswer = this.calculateFactorial(n)
+    const correctAnswer = Math.round(Math.pow(baseNumber, 1/rootType))
+    
+    // ตรวจสอบว่าเป็นกำลังสมบูรณ์จริง (เพื่อป้องกัน floating point error)
+    if (Math.pow(correctAnswer, rootType) !== baseNumber) {
+      // ถ้าไม่ตรงให้สร้างใหม่
+      return this.generateRootQuestion(difficulty)
+    }
     
     // สร้างตัวเลือกผิด
     const distractors = new Set<string>()
     
     const possibleDistractors = [
-      (correctAnswer * 2).toString(),
-      (correctAnswer / 2).toString(),
-      (n * (n + 1)).toString(), // ผิดพลาดทั่วไป
-      (n * n).toString(), // ผิดพลาดทั่วไป
-      this.calculateFactorial(n + 1).toString(),
-      this.calculateFactorial(Math.max(0, n - 1)).toString(),
-      (correctAnswer + n).toString()
+      (correctAnswer + 1).toString(),
+      (correctAnswer - 1).toString(),
+      Math.ceil(correctAnswer * 1.5).toString(),
+      Math.floor(correctAnswer / 1.5).toString(),
+      Math.floor(Math.sqrt(baseNumber / 2)).toString(),
+      Math.ceil(Math.sqrt(baseNumber * 2)).toString(),
+      (correctAnswer * 2).toString()
     ]
     
     // เลือกตัวเลือกที่ไม่ซ้ำกับคำตอบที่ถูก
     for (const distractor of possibleDistractors) {
-      if (distractor !== correctAnswer.toString() && distractors.size < 3) {
+      if (distractor !== correctAnswer.toString() && distractors.size < 3 && parseInt(distractor) > 0) {
         distractors.add(distractor)
       }
     }
     
     // เติมตัวเลือกเพิ่มหากยังไม่ครบ
     while (distractors.size < 3) {
-      const randomDistractor = (Math.floor(Math.random() * correctAnswer) + 1).toString()
+      const randomDistractor = (Math.floor(Math.random() * 20) + 1).toString()
       if (randomDistractor !== correctAnswer.toString()) {
         distractors.add(randomDistractor)
       }
     }
 
     return {
-      expression: `${n}! = ?`,
+      expression: rootType === 2 ? `\\sqrt{${baseNumber}} = ?` : `\\sqrt[${rootType}]{${baseNumber}} = ?`,
       correctAnswer: correctAnswer.toString(),
       choices: this.shuffleArray([correctAnswer.toString(), ...Array.from(distractors)]),
       a: 0, b: 0, c: 0
@@ -770,15 +810,6 @@ export class MathQuestionGenerator {
     }
   }
 
-  // ฟังก์ชันคำนวณแฟกทอเรียล
-  private calculateFactorial(n: number): number {
-    if (n <= 1) return 1
-    let result = 1
-    for (let i = 2; i <= n; i++) {
-      result *= i
-    }
-    return result
-  }
 
   generateQuestion(options: GeneratorOptions): Question {
     const questionType = options.questionType || 'polynomial'
@@ -792,8 +823,8 @@ export class MathQuestionGenerator {
         return this.generateFractionQuestion(options.difficulty)
       case 'power':
         return this.generatePowerQuestion(options.difficulty)
-      case 'factorial':
-        return this.generateFactorialQuestion(options.difficulty)
+      case 'root':
+        return this.generateRootQuestion(options.difficulty)
       case 'function':
         return this.generateFunctionQuestion(options.difficulty)
       case 'polynomial':
@@ -832,7 +863,7 @@ export class MathQuestionGenerator {
     const choices = this.shuffleArray([correctAnswer, ...distractors])
 
     return {
-      expression: `แยกตัวประกอบ: ${expression}`,
+      expression: `${expression}`,
       correctAnswer,
       choices,
       a,

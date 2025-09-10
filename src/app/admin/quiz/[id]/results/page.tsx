@@ -157,26 +157,31 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <Button variant="outline" asChild>
-                <Link href={fromStudent ? "/student" : "/admin"}>
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  {fromStudent ? "กลับหน้านักเรียน" : "กลับหน้าครู"}
-                </Link>
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">ผลคะแนน</h1>
-                <p className="text-gray-600">{quiz.name}</p>
-              </div>
-            </div>
-            {attempts.length > 0 && (
-              <Button onClick={exportResults} variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                Export CSV
-              </Button>
-            )}
-          </div>
+        <div className="mb-8 flex flex-col gap-4">
+  {/* แถวบน: ปุ่มกลับซ้าย + ปุ่ม Export ขวา */}
+  <div className="flex justify-between items-center">
+    <Link href={fromStudent ? "/student" : "/admin"} className="inline-block">
+      <Button variant="outline" className="flex items-center">
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        {fromStudent ? "กลับหน้านักเรียน" : "กลับหน้าครู"}
+      </Button>
+    </Link>
+
+    {attempts.length > 0 && (
+      <Button onClick={exportResults} variant="outline">
+        <Download className="h-4 w-4 mr-2" />
+        Export CSV
+      </Button>
+    )}
+  </div>
+
+  {/* แถวล่าง: หัวข้อ */}
+  <div>
+    <h1 className="text-2xl font-bold text-gray-900">ผลคะแนน</h1>
+    <p className="text-gray-600">{quiz.name}</p>
+  </div>
+</div>
+
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

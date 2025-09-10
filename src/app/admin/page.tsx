@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase'
 import { Plus, QrCode, Trash2, Users } from 'lucide-react'
+import { SigmaSpinner } from '@/components/ui/sigma-spinner'
 import Link from 'next/link'
 
 interface Quiz {
@@ -13,11 +14,14 @@ interface Quiz {
   difficulty: 'easy' | 'medium' | 'hard'
   time_per_question: number
   total_questions: number
-  question_type: 'polynomial' | 'equation' | 'integer' | 'fraction' | 'power' | 'factorial' | 'function'
+  question_type: 'polynomial' | 'equation' | 'integer' | 'fraction' | 'power' | 'root' | 'function'
   created_at: string
 }
 
 export default function AdminPage() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [password, setPassword] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [formData, setFormData] = useState({
@@ -25,12 +29,23 @@ export default function AdminPage() {
     difficulty: 'easy' as 'easy' | 'medium' | 'hard',
     time_per_question: 20,
     total_questions: 10,
-    question_type: 'polynomial' as 'polynomial' | 'equation' | 'integer' | 'fraction' | 'power' | 'factorial' | 'function'
+    question_type: 'polynomial' as 'polynomial' | 'equation' | 'integer' | 'fraction' | 'power' | 'root' | 'function'
   })
 
   useEffect(() => {
-    loadQuizzes()
+    // ตรวจสอบ login state จาก localStorage
+    const savedAuth = localStorage.getItem('admin_authenticated')
+    if (savedAuth === 'true') {
+      setIsAuthenticated(true)
+    }
+    setIsLoading(false)
   }, [])
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadQuizzes()
+    }
+  }, [isAuthenticated])
 
   const loadQuizzes = async () => {
     const { data } = await supabase
@@ -99,10 +114,73 @@ export default function AdminPage() {
       case 'integer': return 'จำนวนเต็ม'
       case 'fraction': return 'เศษส่วน'
       case 'power': return 'เลขยกกำลัง'
-      case 'factorial': return 'แฟกทอเรียล'
+      case 'root': return 'รากที่ n'
       case 'function': return 'ฟังก์ชัน'
       default: return questionType
     }
+  }
+
+  const handleLogin = () => {
+    // รหัสผ่านสำหรับครู: teacher123
+    if (password === 'teacher123') {
+      setIsAuthenticated(true)
+      setPassword('')
+      // บันทึก login state ใน localStorage
+      localStorage.setItem('admin_authenticated', 'true')
+    } else {
+      alert('รหัสผ่านไม่ถูกต้อง')
+      setPassword('')
+    }
+  }
+
+  const handleLogout = () => {
+    setIsAuthenticated(false)
+    localStorage.removeItem('admin_authenticated')
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <SigmaSpinner size="xl" className="mx-auto mb-4" />
+          <p className="text-gray-600">กำลังโหลด...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <Card className="w-full max-w-md border-0 bg-white/70 backdrop-blur-sm">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl text-gray-900">เข้าสู่ระบบครู</CardTitle>
+            <p className="text-gray-600 mt-2">กรอกรหัสผ่านเพื่อเข้าใช้งาน</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">รหัสผ่าน</label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="กรอกรหัสผ่าน"
+                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                className="text-center"
+              />
+            </div>
+            <Button onClick={handleLogin} disabled={!password} className="w-full">
+              เข้าสู่ระบบ
+            </Button>
+            <div className="text-center">
+              <Link href="/" className="text-sm text-gray-500 hover:text-gray-700">
+                กลับหน้าหลัก
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -113,9 +191,14 @@ export default function AdminPage() {
             <h1 className="text-3xl font-bold text-gray-900">หน้าครู</h1>
             <p className="text-gray-600 mt-2">จัดการชุดข้อสอบและดูผลคะแนน</p>
           </div>
-          <Link href="/" className="text-gray-600 hover:text-gray-900">
-            กลับหน้าหลัก
-          </Link>
+          <div className="flex items-center gap-4">
+            <button onClick={handleLogout} className="text-gray-600 hover:text-gray-900">
+              ออกจากระบบ
+            </button>
+            <Link href="/" className="text-gray-600 hover:text-gray-900">
+              กลับหน้าหลัก
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -147,7 +230,7 @@ export default function AdminPage() {
                     <label className="block text-sm font-medium mb-2">ประเภทข้อสอบ</label>
                     <select
                       value={formData.question_type}
-                      onChange={(e) => setFormData({ ...formData, question_type: e.target.value as 'polynomial' | 'equation' | 'integer' | 'fraction' | 'power' | 'factorial' | 'function' })}
+                      onChange={(e) => setFormData({ ...formData, question_type: e.target.value as 'polynomial' | 'equation' | 'integer' | 'fraction' | 'power' | 'root' | 'function' })}
                       className="w-full px-3 py-2 border rounded-lg"
                     >
                       <option value="polynomial">แยกตัวประกอบพหุนาม</option>
@@ -155,7 +238,7 @@ export default function AdminPage() {
                       <option value="integer">คำนวณจำนวนเต็ม (+, -, ×, ÷)</option>
                       <option value="fraction">คำนวณเศษส่วน (+, -, ×, ÷)</option>
                       <option value="power">เลขยกกำลัง (a^n)</option>
-                      <option value="factorial">แฟกทอเรียล (n!)</option>
+                      <option value="root">รากที่ n (√, ∛, ∜)</option>
                       <option value="function">การหาค่าฟังก์ชัน f(x)</option>
                     </select>
                   </div>
@@ -179,7 +262,7 @@ export default function AdminPage() {
                       <Input
                         type="number"
                         value={formData.time_per_question}
-                        onChange={(e) => setFormData({ ...formData, time_per_question: parseInt(e.target.value) })}
+                        onChange={(e) => setFormData({ ...formData, time_per_question: parseInt(e.target.value) || 20 })}
                         min="10"
                         max="60"
                       />
@@ -189,7 +272,7 @@ export default function AdminPage() {
                       <Input
                         type="number"
                         value={formData.total_questions}
-                        onChange={(e) => setFormData({ ...formData, total_questions: parseInt(e.target.value) })}
+                        onChange={(e) => setFormData({ ...formData, total_questions: parseInt(e.target.value) || 10 })}
                         min="5"
                         max="50"
                       />

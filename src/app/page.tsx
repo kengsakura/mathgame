@@ -31,9 +31,9 @@ export default function Home() {
               <p className="text-gray-600 mb-6">
                 สร้างและจัดการชุดข้อสอบ พร้อมดูผลคะแนนของนักเรียน
               </p>
-              <Button asChild className="w-full">
-                <Link href="/admin">เข้าสู่หน้าครู</Link>
-              </Button>
+              <Link href="/admin" className="w-full">
+                <Button className="w-full cursor-pointer">เข้าสู่หน้าครู</Button>
+              </Link>
             </CardContent>
           </Card>
 
@@ -48,9 +48,9 @@ export default function Home() {
               <p className="text-gray-600 mb-6">
                 สแกน QR Code เพื่อเข้าเล่นเกมทดสอบความรู้
               </p>
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/student">เริ่มเล่นเกม</Link>
-              </Button>
+              <Link href="/student" className="w-full">
+                <Button variant="outline" className="w-full cursor-pointer">เริ่มเล่นเกม</Button>
+              </Link>
             </CardContent>
           </Card>
 
@@ -65,16 +65,16 @@ export default function Home() {
               <p className="text-gray-600 mb-6">
                 ครูสร้างชุดข้อสอบ → สร้าง QR Code → นักเรียนสแกนและทำข้อสอบ
               </p>
-              <Button asChild variant="secondary" className="w-full">
-                <Link href="/how-to-use">เรียนรู้เพิ่มเติม</Link>
-              </Button>
+              <Link href="/how-to-use" className="w-full">
+                <Button variant="secondary" className="w-full cursor-pointer">เรียนรู้เพิ่มเติม</Button>
+              </Link>
             </CardContent>
           </Card>
         </div>
 
         <div className="mt-16 text-center">
           <div className="inline-flex items-center space-x-4 bg-white/50 backdrop-blur-sm rounded-full px-6 py-3 border border-gray-200">
-            <span className="text-gray-600">พัฒนาโดย Claude Code</span>
+            <span className="text-gray-600">พัฒนาโดย ครูเก่ง</span>
           </div>
         </div>
       </div>

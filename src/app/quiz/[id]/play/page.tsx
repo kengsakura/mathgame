@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { SigmaSpinner } from '@/components/ui/sigma-spinner'
 import { supabase } from '@/lib/supabase'
 import { MathQuestionGenerator } from '@/lib/polynomial-generator'
 import type { Question } from '@/lib/polynomial-generator'
@@ -17,7 +18,7 @@ interface Quiz {
   difficulty: 'easy' | 'medium' | 'hard'
   time_per_question: number
   total_questions: number
-  question_type: 'polynomial' | 'equation' | 'integer' | 'fraction' | 'power' | 'factorial' | 'function'
+  question_type: 'polynomial' | 'equation' | 'integer' | 'fraction' | 'power' | 'root' | 'function'
 }
 
 interface GameState {
@@ -175,7 +176,26 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
   }
 
   const restartQuiz = () => {
-    router.push(`/student`)
+    // รีเซ็ต game state และเริ่มเกมใหม่
+    const newQuestions = Array.from({ length: quiz.total_questions }, () => 
+      generator.generateQuestion({
+        difficulty: quiz.difficulty,
+        maxConstantTerm: 30,
+        questionType: quiz.question_type as any
+      })
+    )
+    
+    setGameState({
+      questions: newQuestions,
+      currentQuestion: 0,
+      score: 0,
+      answers: {},
+      gameStarted: false,
+      gameEnded: false,
+      timeLeft: quiz.time_per_question,
+      showResult: false,
+      lastAnswerCorrect: false
+    })
   }
 
   const formatTime = (seconds: number) => {
@@ -207,7 +227,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
       case 'integer': return 'คำนวณผลลัพธ์ต่อไปนี้'
       case 'fraction': return 'คำนวณเศษส่วนต่อไปนี้'
       case 'power': return 'คำนวณเลขยกกำลังต่อไปนี้'
-      case 'factorial': return 'คำนวณแฟกทอเรียลต่อไปนี้'
+      case 'root': return 'คำนวณรากที่ n ต่อไปนี้'
       case 'function': return 'หาค่าฟังก์ชันต่อไปนี้'
       default: return 'แก้โจทย์ต่อไปนี้'
     }
@@ -217,7 +237,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <SigmaSpinner size="xl" className="mx-auto mb-4" />
           <p className="text-gray-600">กำลังโหลดข้อสอบ...</p>
         </div>
       </div>
@@ -406,6 +426,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
         </div>
 
         {/* Question */}
+        {currentQ ? (
         <div className="max-w-4xl mx-auto">
           <Card className={`border-0 bg-white/70 backdrop-blur-sm mb-6 transition-all duration-300 ${
             gameState.showResult && !gameState.lastAnswerCorrect 
@@ -422,14 +443,14 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
             <CardContent>
               <div className="text-center">
                 <div className="text-4xl font-mono font-bold text-gray-900 mb-8 p-6 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                  {currentQ.expression.includes('\\frac') || currentQ.expression.includes('^{') || currentQ.expression.includes('\\') ? (
+                  {currentQ?.expression && (currentQ.expression.includes('\\frac') || currentQ.expression.includes('^{') || currentQ.expression.includes('\\')) ? (
                     <InlineMath math={currentQ.expression} />
                   ) : (
-                    currentQ.expression
+                    currentQ?.expression || 'Loading...'
                   )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {currentQ.choices.map((choice, index) => {
+                  {currentQ?.choices?.map((choice, index) => {
                     const isSelected = gameState.answers[gameState.currentQuestion] === choice
                     const isCorrect = choice === currentQ.correctAnswer
                     
@@ -487,7 +508,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
                     <p className="font-medium">
                       {gameState.lastAnswerCorrect 
                         ? '🎉 ถูกต้อง!' 
-                        : `❌ ผิด! คำตอบที่ถูกคือ ${currentQ.correctAnswer}`}
+                        : `❌ ผิด! คำตอบที่ถูกคือ ${currentQ?.correctAnswer || 'N/A'}`}
                     </p>
                   </div>
                 )}
@@ -495,6 +516,16 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
             </CardContent>
           </Card>
         </div>
+        ) : (
+          <div className="max-w-4xl mx-auto">
+            <Card className="border-0 bg-white/70 backdrop-blur-sm mb-6">
+              <CardContent className="p-8 text-center">
+                <SigmaSpinner size="xl" className="mx-auto mb-4" />
+                <p className="text-gray-600">กำลังโหลดคำถาม...</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   )
