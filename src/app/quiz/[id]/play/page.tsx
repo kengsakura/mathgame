@@ -18,7 +18,7 @@ interface Quiz {
   difficulty: 'easy' | 'medium' | 'hard'
   time_per_question: number
   total_questions: number
-  question_type: 'polynomial' | 'equation' | 'integer' | 'fraction' | 'power' | 'root' | 'function'
+  question_type: 'polynomial' | 'equation' | 'integer' | 'fraction' | 'power' | 'root' | 'function' | 'arithmetic_sequence' | 'geometric_sequence' | 'arithmetic_series' | 'geometric_series'
 }
 
 interface GameState {
@@ -231,6 +231,10 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
       case 'power': return 'คำนวณเลขยกกำลังต่อไปนี้'
       case 'root': return 'คำนวณรากที่ n ต่อไปนี้'
       case 'function': return 'หาค่าฟังก์ชันต่อไปนี้'
+      case 'arithmetic_sequence': return 'ลำดับเลขคณิต'
+      case 'geometric_sequence': return 'ลำดับเรขาคณิต'
+      case 'arithmetic_series': return 'อนุกรมเลขคณิต'
+      case 'geometric_series': return 'อนุกรมเรขาคณิต'
       default: return 'แก้โจทย์ต่อไปนี้'
     }
   }
