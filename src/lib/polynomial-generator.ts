@@ -848,33 +848,58 @@ export class MathQuestionGenerator {
 
   // ===== สำหรับการหาค่าฟังก์ชัน =====
   private generateFunctionQuestion(difficulty: 'easy' | 'medium' | 'hard'): Question {
-    let a: number, b: number, x: number, correctAnswer: number, functionExpr: string
+    let a: number, b: number, c: number, x: number, correctAnswer: number, functionExpr: string, questionExpr: string
     
     if (difficulty === 'easy') {
-      // ง่าย: f(x) = ax + b
-      a = Math.floor(Math.random() * 5) + 1 // 1-5
-      b = Math.floor(Math.random() * 10) - 5 // -5 ถึง 4
-      x = Math.floor(Math.random() * 5) + 1 // 1-5
+      // ง่าย: ฟังก์ชันเชิงเส้น f(x) = ax + b
+      a = Math.floor(Math.random() * 4) + 1 // 1-4 (เล็กกว่าเดิม)
+      b = Math.floor(Math.random() * 8) - 4 // -4 ถึง 3
+      x = Math.floor(Math.random() * 4) + 1 // 1-4
       
       correctAnswer = a * x + b
       functionExpr = `f(x) = ${a === 1 ? '' : a}x${b >= 0 ? '+' + b : b}`
+      questionExpr = `f(${x}) = ?`
     } else if (difficulty === 'medium') {
-      // ปานกลาง: f(x) = ax² + b
-      a = Math.floor(Math.random() * 3) + 1 // 1-3
-      b = Math.floor(Math.random() * 10) - 5 // -5 ถึง 4
-      x = Math.floor(Math.random() * 4) + 1 // 1-4
+      // ปานกลาง: ฟังก์ชันผสม (เชิงเส้น + กำลังสอง)
+      const isLinear = Math.random() < 0.5 // สุ่มระหว่างเชิงเส้นและกำลังสอง
       
-      correctAnswer = a * x * x + b
-      functionExpr = `f(x) = ${a === 1 ? '' : a}x^{2}${b >= 0 ? '+' + b : b}`
+      if (isLinear) {
+        // เชิงเส้น f(x) = ax + b (ค่า a, b ใหญ่ขึ้น)
+        a = Math.floor(Math.random() * 6) + 3 // 3-8
+        b = Math.floor(Math.random() * 12) - 6 // -6 ถึง 5
+        x = Math.floor(Math.random() * 3) + 1 // 1-3
+        
+        correctAnswer = a * x + b
+        functionExpr = `f(x) = ${a}x${b >= 0 ? '+' + b : b}`
+        questionExpr = `f(${x}) = ?`
+      } else {
+        // กำลังสอง f(x) = ax² + b
+        a = Math.floor(Math.random() * 3) + 1 // 1-3
+        b = Math.floor(Math.random() * 8) - 4 // -4 ถึง 3
+        x = Math.floor(Math.random() * 3) + 1 // 1-3
+        
+        correctAnswer = a * x * x + b
+        functionExpr = `f(x) = ${a === 1 ? '' : a}x^{2}${b >= 0 ? '+' + b : b}`
+        questionExpr = `f(${x}) = ?`
+      }
     } else {
-      // ยาก: f(x) = ax² + bx + c
+      // ยาก: ฟังก์ชันกำลังสอง f(x) = ax² + bx + c
       a = Math.floor(Math.random() * 3) + 1 // 1-3
-      b = Math.floor(Math.random() * 6) - 3 // -3 ถึง 2
-      const c = Math.floor(Math.random() * 6) - 3 // -3 ถึง 2
+      b = Math.floor(Math.random() * 5) - 2 // -2 ถึง 2
+      c = Math.floor(Math.random() * 5) - 2 // -2 ถึง 2
       x = Math.floor(Math.random() * 3) + 1 // 1-3
       
       correctAnswer = a * x * x + b * x + c
-      functionExpr = `f(x) = ${a === 1 ? '' : a}x^{2}${b >= 0 ? '+' + b : b}x${c >= 0 ? '+' + c : c}`
+      // สร้าง expression ให้ถูกต้อง
+      let expr = `f(x) = ${a === 1 ? '' : a}x^{2}`
+      if (b !== 0) {
+        expr += `${b > 0 ? '+' : ''}${b === 1 ? '' : b === -1 ? '-' : b}x`
+      }
+      if (c !== 0) {
+        expr += `${c > 0 ? '+' : ''}${c}`
+      }
+      functionExpr = expr
+      questionExpr = `f(${x}) = ?`
     }
     
     // สร้างตัวเลือกผิด
@@ -906,7 +931,7 @@ export class MathQuestionGenerator {
     }
 
     return {
-      expression: `${functionExpr}, f(${x}) = ?`,
+      expression: `${functionExpr}\\\\${questionExpr}`,
       correctAnswer: correctAnswer.toString(),
       choices: this.shuffleArray([correctAnswer.toString(), ...Array.from(distractors)]),
       a: 0, b: 0, c: 0
