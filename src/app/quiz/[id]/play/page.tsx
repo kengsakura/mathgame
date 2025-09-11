@@ -178,6 +178,8 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
   }
 
   const restartQuiz = () => {
+    if (!quiz) return
+    
     // รีเซ็ต game state และเริ่มเกมใหม่
     const newQuestions = Array.from({ length: quiz.total_questions }, () => 
       generator.generateQuestion({
@@ -191,7 +193,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
       questions: newQuestions,
       currentQuestion: 0,
       score: 0,
-      answers: {},
+      answers: new Array(quiz.total_questions).fill(''),
       gameStarted: false,
       gameEnded: false,
       timeLeft: quiz.time_per_question,
