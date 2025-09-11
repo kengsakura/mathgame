@@ -47,6 +47,12 @@ export class MathQuestionGenerator {
         return this.generateFactors(difficulty, maxConstantTerm)
       }
       
+      // ตรวจสอบว่า gcd(a, b, c) = 1 (จำนวนเฉพาะสัมพัทธ์)
+      const gcd = this.findGCD3(a, b, c)
+      if (gcd > 1) {
+        return this.generateFactors(difficulty, maxConstantTerm)
+      }
+      
       return [a, b, c, a]
     } else {
       // ปานกลางและยาก: สร้างแบบ (ax+m)(bx+n) = abx² + (an+bm)x + mn
@@ -81,6 +87,12 @@ export class MathQuestionGenerator {
       
       // ตรวจสอบขอบเขตพจน์หลัง
       if (Math.abs(c) > maxConstantTerm) {
+        return this.generateFactors(difficulty, maxConstantTerm)
+      }
+      
+      // ตรวจสอบว่า gcd(a, b, c) = 1 (จำนวนเฉพาะสัมพัทธ์)
+      const gcd = this.findGCD3(a, b, c)
+      if (gcd > 1) {
         return this.generateFactors(difficulty, maxConstantTerm)
       }
       
@@ -642,7 +654,7 @@ export class MathQuestionGenerator {
     }
   }
 
-  // ฟังก์ชันหา GCD
+  // ฟังก์ชันหา GCD สำหรับ 2 ตัวเลข
   private findGCD(a: number, b: number): number {
     while (b !== 0) {
       const temp = b
@@ -650,6 +662,11 @@ export class MathQuestionGenerator {
       a = temp
     }
     return a
+  }
+
+  // ฟังก์ชันหา GCD สำหรับ 3 ตัวเลข
+  private findGCD3(a: number, b: number, c: number): number {
+    return this.findGCD(this.findGCD(Math.abs(a), Math.abs(b)), Math.abs(c))
   }
 
   // ฟังก์ชันแสดงเศษส่วนแบบ LaTeX
