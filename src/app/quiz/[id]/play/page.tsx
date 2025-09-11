@@ -158,7 +158,20 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
   const endGame = async () => {
     if (!quiz) return
 
-    const finalScore = gameState.score
+    // คำนวณคะแนนจากคำตอบทั้งหมด เพื่อให้แน่ใจว่าได้คะแนนข้อสุดท้าย
+    let finalScore = 0
+    for (let i = 0; i < gameState.questions.length; i++) {
+      const question = gameState.questions[i]
+      const answer = gameState.answers[i]
+      if (answer) {
+        const isCorrect = question.checkAnswer ? 
+          question.checkAnswer(answer) : 
+          answer === question.correctAnswer
+        if (isCorrect) {
+          finalScore++
+        }
+      }
+    }
     
     setGameState(prev => ({
       ...prev,
