@@ -23,41 +23,64 @@ export class MathQuestionGenerator {
     let p: number, q: number
 
     if (difficulty === 'easy') {
-      // ง่าย: สัมประสิทธิ์หน้า x² เป็น 1
+      // ง่าย: สัมประสิทธิ์หน้า x² เป็น 1 แบบ (x+p)(x+q)
       p = Math.floor(Math.random() * 10) + 1
       q = Math.floor(Math.random() * 10) + 1
       
       // สุ่มเครื่องหมาย
       if (Math.random() < 0.3) p = -p
       if (Math.random() < 0.3) q = -q
-    } else if (difficulty === 'medium') {
-      // ปานกลาง: สัมประสิทธิ์หน้า x² อาจเป็น 2, 3
-      a = Math.random() < 0.6 ? 1 : (Math.random() < 0.5 ? 2 : 3)
-      p = Math.floor(Math.random() * 8) + 1
-      q = Math.floor(Math.random() * 8) + 1
       
-      if (Math.random() < 0.4) p = -p
-      if (Math.random() < 0.4) q = -q
+      // คำนวณค่าสัมประสิทธิ์ จาก (x+p)(x+q) = x² + (p+q)x + pq
+      const b = p + q
+      const c = p * q
+      
+      // ตรวจสอบขอบเขตพจน์หลัง
+      if (Math.abs(c) > maxConstantTerm) {
+        return this.generateFactors(difficulty, maxConstantTerm)
+      }
+      
+      return [a, b, c, a]
     } else {
-      // ยาก: สัมประสิทธิ์หน้า x² หลากหลาย
-      a = Math.floor(Math.random() * 4) + 2
-      p = Math.floor(Math.random() * 6) + 1
-      q = Math.floor(Math.random() * 6) + 1
+      // ปานกลางและยาก: สร้างแบบ (ax+m)(bx+n) = abx² + (an+bm)x + mn
+      let a1: number, a2: number, m: number, n: number
       
-      if (Math.random() < 0.5) p = -p
-      if (Math.random() < 0.5) q = -q
+      if (difficulty === 'medium') {
+        // ปานกลาง: ใช้ค่าที่ไม่ซับซ้อนเกินไป
+        a1 = [1, 2, 3][Math.floor(Math.random() * 3)]
+        a2 = [1, 2, 3][Math.floor(Math.random() * 3)]
+        m = Math.floor(Math.random() * 6) + 1
+        n = Math.floor(Math.random() * 6) + 1
+        
+        // สุ่มเครื่องหมาย
+        if (Math.random() < 0.4) m = -m
+        if (Math.random() < 0.4) n = -n
+      } else {
+        // ยาก: ค่าที่ซับซ้อนขึ้น
+        a1 = Math.floor(Math.random() * 4) + 1  // 1-4
+        a2 = Math.floor(Math.random() * 4) + 1  // 1-4
+        m = Math.floor(Math.random() * 8) + 1
+        n = Math.floor(Math.random() * 8) + 1
+        
+        // สุ่มเครื่องหมาย
+        if (Math.random() < 0.5) m = -m
+        if (Math.random() < 0.5) n = -n
+      }
+      
+      // คำนวณสัมประสิทธิ์ จาก (a1*x + m)(a2*x + n) = a1*a2*x² + (a1*n + a2*m)x + m*n
+      const a = a1 * a2
+      const b = a1 * n + a2 * m
+      const c = m * n
+      
+      // ตรวจสอบขอบเขตพจน์หลัง
+      if (Math.abs(c) > maxConstantTerm) {
+        return this.generateFactors(difficulty, maxConstantTerm)
+      }
+      
+      // คืนค่า [a, b, c, factors_info] โดย factors_info เก็บข้อมูลการแยกตัวประกอบ
+      // เราจะใช้ a1, a2, m, n ในการสร้างคำตอบที่ถูกต้อง
+      return [a, b, c, a1 * 1000 + a2 * 100 + (m + 50) * 10 + (n + 50)] // encode ข้อมูลใน factors_info
     }
-
-    // คำนวณค่าสัมประสิทธิ์
-    const b = a * (p + q)
-    const c = a * p * q
-
-    // ตรวจสอบขอบเขตพจน์หลัง
-    if (Math.abs(c) > maxConstantTerm) {
-      return this.generateFactors(difficulty, maxConstantTerm)
-    }
-
-    return [a, b, c, a]
   }
 
   private formatExpression(a: number, b: number, c: number): string {
@@ -89,15 +112,48 @@ export class MathQuestionGenerator {
     return expr
   }
 
-  private formatFactors(a: number, p: number, q: number): string {
-    const factor1 = this.formatSingleFactor(a === 1 ? 1 : a, p)
-    const factor2 = this.formatSingleFactor(1, q)
-    
+  private formatFactors(a: number, p: number, q: number, factorsInfo?: number): string {
     if (a === 1) {
+      // กรณีง่าย: (x+p)(x+q)
       return `(x${this.formatSign(p)})(x${this.formatSign(q)})`
+    } else if (factorsInfo) {
+      // กรณีปานกลางและยาก: decode ข้อมูลจาก factorsInfo
+      const a1 = Math.floor(factorsInfo / 1000)
+      const a2 = Math.floor((factorsInfo % 1000) / 100)
+      const m = Math.floor((factorsInfo % 100) / 10) - 50
+      const n = (factorsInfo % 10) - 50
+      
+      // สร้าง (a1*x + m)(a2*x + n)
+      const factor1 = this.formatComplexFactor(a1, m)
+      const factor2 = this.formatComplexFactor(a2, n)
+      
+      return `(${factor1})(${factor2})`
     } else {
+      // fallback เก่า (ไม่ควรเกิดขึ้น)
       return `${a}(x${this.formatSign(p)})(x${this.formatSign(q)})`
     }
+  }
+  
+  private formatComplexFactor(coeff: number, constant: number): string {
+    let factor = ''
+    
+    // ส่วนของ x
+    if (coeff === 1) {
+      factor = 'x'
+    } else if (coeff === -1) {
+      factor = '-x'
+    } else {
+      factor = `${coeff}x`
+    }
+    
+    // ส่วนของค่าคงที่
+    if (constant > 0) {
+      factor += `+${constant}`
+    } else if (constant < 0) {
+      factor += constant.toString()
+    }
+    
+    return factor
   }
 
   private formatSingleFactor(coeff: number, constant: number): string {
@@ -120,40 +176,52 @@ export class MathQuestionGenerator {
     }
   }
 
-  private generateDistractors(correctA: number, correctP: number, correctQ: number): string[] {
+  private generateDistractors(correctA: number, correctP: number, correctQ: number, factorsInfo?: number): string[] {
     const distractors = new Set<string>()
-    const correct = this.formatFactors(correctA, correctP, correctQ)
+    const correct = this.formatFactors(correctA, correctP, correctQ, factorsInfo)
 
-    // ตัวลวงแบบที่ 1: สลับเครื่องหมาย
-    if (correctP > 0 && correctQ > 0) {
-      distractors.add(this.formatFactors(correctA, -correctP, correctQ))
-      distractors.add(this.formatFactors(correctA, correctP, -correctQ))
-    } else if (correctP < 0 && correctQ < 0) {
-      distractors.add(this.formatFactors(correctA, -correctP, correctQ))
-      distractors.add(this.formatFactors(correctA, correctP, -correctQ))
-    } else {
-      distractors.add(this.formatFactors(correctA, -correctP, -correctQ))
-    }
-
-    // ตัวลวงแบบที่ 2: ใช้ตัวคูณของพจน์หลัง (อัจฉริยะ)
-    const c = correctA * correctP * correctQ
-    const factors = this.findFactorPairs(Math.abs(c))
-    
-    for (const [f1, f2] of factors) {
-      if (f1 !== Math.abs(correctP) || f2 !== Math.abs(correctQ)) {
-        // สร้างตัวลวงด้วยตัวประกอบอื่นๆ ของ c
-        const sign1 = Math.random() < 0.5 ? 1 : -1
-        const sign2 = c < 0 ? -sign1 : sign1
-        distractors.add(this.formatFactors(correctA, sign1 * f1, sign2 * f2))
-        
-        if (distractors.size >= 3) break
+    if (correctA === 1) {
+      // กรณีง่าย: ใช้วิธีเดิม
+      if (correctP > 0 && correctQ > 0) {
+        distractors.add(this.formatFactors(correctA, -correctP, correctQ))
+        distractors.add(this.formatFactors(correctA, correctP, -correctQ))
+      } else if (correctP < 0 && correctQ < 0) {
+        distractors.add(this.formatFactors(correctA, -correctP, correctQ))
+        distractors.add(this.formatFactors(correctA, correctP, -correctQ))
+      } else {
+        distractors.add(this.formatFactors(correctA, -correctP, -correctQ))
       }
-    }
 
-    // ตัวลวงแบบที่ 3: เปลี่ยนค่าสัมประสิทธิ์หน้า x²
-    if (distractors.size < 3) {
-      const newA = correctA === 1 ? 2 : correctA === 2 ? 3 : 1
-      distractors.add(this.formatFactors(newA, correctP, correctQ))
+      const c = correctP * correctQ
+      const factors = this.findFactorPairs(Math.abs(c))
+      
+      for (const [f1, f2] of factors) {
+        if (f1 !== Math.abs(correctP) || f2 !== Math.abs(correctQ)) {
+          const sign1 = Math.random() < 0.5 ? 1 : -1
+          const sign2 = c < 0 ? -sign1 : sign1
+          distractors.add(this.formatFactors(correctA, sign1 * f1, sign2 * f2))
+          
+          if (distractors.size >= 3) break
+        }
+      }
+    } else if (factorsInfo) {
+      // กรณีปานกลางและยาก: สร้าง distractors สำหรับ (a1x+m)(a2x+n)
+      const a1 = Math.floor(factorsInfo / 1000)
+      const a2 = Math.floor((factorsInfo % 1000) / 100)
+      const m = Math.floor((factorsInfo % 100) / 10) - 50
+      const n = (factorsInfo % 10) - 50
+      
+      // ตัวลวงแบบที่ 1: สลับเครื่องหมาย constant
+      distractors.add(`(${this.formatComplexFactor(a1, -m)})(${this.formatComplexFactor(a2, n)})`)
+      distractors.add(`(${this.formatComplexFactor(a1, m)})(${this.formatComplexFactor(a2, -n)})`)
+      
+      // ตัวลวงแบบที่ 2: สลับ coefficients
+      distractors.add(`(${this.formatComplexFactor(a2, m)})(${this.formatComplexFactor(a1, n)})`)
+      
+      // ตัวลวงแบบที่ 3: factor ออกตัวร่วม (วิธีผิดที่หลายคนทำ)
+      if (correctA > 1) {
+        distractors.add(`${correctA}(x${this.formatSign(Math.round(m/a1))})(x${this.formatSign(Math.round(n/a2))})`)
+      }
     }
 
     // ตัวลวงเพิ่มเติมหากยังไม่ครบ
@@ -163,7 +231,7 @@ export class MathQuestionGenerator {
       const randomSignP = Math.random() < 0.5 ? 1 : -1
       const randomSignQ = Math.random() < 0.5 ? 1 : -1
       
-      const distractor = this.formatFactors(correctA, randomSignP * randomP, randomSignQ * randomQ)
+      const distractor = this.formatFactors(correctA, randomSignP * randomP, randomSignQ * randomQ, factorsInfo)
       if (distractor !== correct) {
         distractors.add(distractor)
       }
@@ -192,12 +260,33 @@ export class MathQuestionGenerator {
   }
 
   // ฟังก์ชันเช็คคำตอบแบบยืดหยุ่น - เช็คทั้ง 2 แบบ (x+a)(x+b) และ (x+b)(x+a)
-  private createAnswerChecker(correctAnswer: string, a: number, p: number, q: number): (answer: string) => boolean {
-    const correctOption1 = this.formatFactors(a, p, q) // เช่น (x+6)(x-6)
-    const correctOption2 = this.formatFactors(a, q, p) // เช่น (x-6)(x+6)
-    
-    return (answer: string) => {
-      return answer === correctOption1 || answer === correctOption2
+  private createAnswerChecker(correctAnswer: string, a: number, p: number, q: number, factorsInfo?: number): (answer: string) => boolean {
+    if (a === 1) {
+      // กรณีง่าย: เช็คทั้ง 2 แบบ (x+p)(x+q) และ (x+q)(x+p)
+      const correctOption1 = this.formatFactors(a, p, q)
+      const correctOption2 = this.formatFactors(a, q, p)
+      
+      return (answer: string) => {
+        return answer === correctOption1 || answer === correctOption2
+      }
+    } else if (factorsInfo) {
+      // กรณีปานกลางและยาก: เช็คทั้ง 2 แบบ (a1x+m)(a2x+n) และ (a2x+n)(a1x+m)
+      const a1 = Math.floor(factorsInfo / 1000)
+      const a2 = Math.floor((factorsInfo % 1000) / 100)
+      const m = Math.floor((factorsInfo % 100) / 10) - 50
+      const n = (factorsInfo % 10) - 50
+      
+      const correctOption1 = `(${this.formatComplexFactor(a1, m)})(${this.formatComplexFactor(a2, n)})`
+      const correctOption2 = `(${this.formatComplexFactor(a2, n)})(${this.formatComplexFactor(a1, m)})`
+      
+      return (answer: string) => {
+        return answer === correctOption1 || answer === correctOption2
+      }
+    } else {
+      // fallback
+      return (answer: string) => {
+        return answer === correctAnswer
+      }
     }
   }
 
@@ -1082,31 +1171,37 @@ export class MathQuestionGenerator {
   }
 
   private generatePolynomialQuestion(options: GeneratorOptions): Question {
-    const [a, b, c] = this.generateFactors(options.difficulty, options.maxConstantTerm)
+    const [a, b, c, factorsInfo] = this.generateFactors(options.difficulty, options.maxConstantTerm)
     
-    // คำนวณค่า p และ q จาก ax² + bx + c = a(x + p)(x + q)
-    // โดยที่ b = a(p + q) และ c = apq
-    const sum = b / a
-    const product = c / a
+    let correctAnswer: string
+    let p: number, q: number
     
-    // แก้สมการกำลังสอง t² - sum*t + product = 0
-    const discriminant = sum * sum - 4 * product
-    if (discriminant < 0) {
-      return this.generatePolynomialQuestion(options) // สร้างใหม่หากไม่มีคำตอบจริง
-    }
-    
-    const sqrt = Math.sqrt(discriminant)
-    const p = (sum + sqrt) / 2
-    const q = (sum - sqrt) / 2
-    
-    // ตรวจสอบว่า p และ q เป็นจำนวนเต็ม
-    if (!Number.isInteger(p) || !Number.isInteger(q)) {
-      return this.generatePolynomialQuestion(options) // สร้างใหม่
+    if (a === 1) {
+      // กรณีง่าย: หา p และ q จาก x² + bx + c = (x + p)(x + q)
+      // โดยที่ b = p + q และ c = pq
+      const discriminant = b * b - 4 * c
+      if (discriminant < 0) {
+        return this.generatePolynomialQuestion(options)
+      }
+      
+      const sqrt = Math.sqrt(discriminant)
+      p = (-b + sqrt) / 2
+      q = (-b - sqrt) / 2
+      
+      if (!Number.isInteger(p) || !Number.isInteger(q)) {
+        return this.generatePolynomialQuestion(options)
+      }
+      
+      correctAnswer = this.formatFactors(a, Math.round(p), Math.round(q))
+    } else {
+      // กรณีปานกลางและยาก: ใช้ข้อมูลจาก factorsInfo
+      correctAnswer = this.formatFactors(a, 0, 0, factorsInfo)
+      p = 0 // ไม่ใช้สำหรับกรณีนี้
+      q = 0 // ไม่ใช้สำหรับกรณีนี้
     }
 
     const expression = this.formatExpression(a, b, c)
-    const correctAnswer = this.formatFactors(a, Math.round(p), Math.round(q))
-    const distractors = this.generateDistractors(a, Math.round(p), Math.round(q))
+    const distractors = this.generateDistractors(a, Math.round(p), Math.round(q), factorsInfo)
     
     const choices = this.shuffleArray([correctAnswer, ...distractors])
 
@@ -1117,7 +1212,7 @@ export class MathQuestionGenerator {
       a,
       b,
       c,
-      checkAnswer: this.createAnswerChecker(correctAnswer, a, Math.round(p), Math.round(q))
+      checkAnswer: this.createAnswerChecker(correctAnswer, a, Math.round(p), Math.round(q), factorsInfo)
     }
   }
 
