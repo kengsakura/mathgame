@@ -31,6 +31,7 @@ interface GameState {
   gameEnded: boolean
   showResult: boolean
   lastAnswerCorrect: boolean
+  startTime: number | null
 }
 
 export default function QuizPlayPage({ params }: { params: Promise<{ id: string }> }) {
@@ -49,7 +50,8 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
     gameStarted: false,
     gameEnded: false,
     showResult: false,
-    lastAnswerCorrect: false
+    lastAnswerCorrect: false,
+    startTime: null
   })
 
   const generator = new MathQuestionGenerator()
@@ -106,7 +108,8 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
       gameStarted: true,
       gameEnded: false,
       showResult: false,
-      lastAnswerCorrect: false
+      lastAnswerCorrect: false,
+      startTime: Date.now()
     })
   }
 
@@ -179,14 +182,18 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
       timeLeft: 0
     }))
 
+    // คำนวณเวลาที่ใช้จริง (วินาที)
+    const actualTimeUsed = gameState.startTime ? 
+      Math.round((Date.now() - gameState.startTime) / 1000) : 
+      quiz.total_questions * quiz.time_per_question
+
     // บันทึกผลคะแนน
     await supabase.from('quiz_attempts').insert({
       quiz_id: id,
       student_name: studentName,
       score: finalScore,
       total_questions: quiz.total_questions,
-      time_taken: (quiz.total_questions * quiz.time_per_question) - 
-                   ((quiz.total_questions - gameState.currentQuestion - 1) * quiz.time_per_question + gameState.timeLeft)
+      time_taken: actualTimeUsed
     })
   }
 
@@ -211,7 +218,8 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
       gameEnded: false,
       timeLeft: quiz.time_per_question,
       showResult: false,
-      lastAnswerCorrect: false
+      lastAnswerCorrect: false,
+      startTime: null
     })
   }
 
