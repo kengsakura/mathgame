@@ -93,7 +93,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
 
     const questions = generator.generateQuestions(quiz.total_questions, {
       difficulty: quiz.difficulty,
-      maxConstantTerm: quiz.difficulty === 'easy' ? 50 : quiz.difficulty === 'medium' ? 100 : 200,
+      maxConstantTerm: quiz.difficulty === 'easy' ? 20 : quiz.difficulty === 'medium' ? 30 : 40,
       questionType: quiz.question_type
     })
 
@@ -184,7 +184,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
     const newQuestions = Array.from({ length: quiz.total_questions }, () => 
       generator.generateQuestion({
         difficulty: quiz.difficulty,
-        maxConstantTerm: 30,
+        maxConstantTerm: 20,
         questionType: quiz.question_type as any
       })
     )

@@ -59,25 +59,25 @@ export class MathQuestionGenerator {
       let a1: number, a2: number, m: number, n: number
       
       if (difficulty === 'medium') {
-        // ปานกลาง: ใช้ค่าที่ไม่ซับซ้อนเกินไป
-        a1 = [1, 2, 3][Math.floor(Math.random() * 3)]
+        // ปานกลาง: ใช้ค่าเล็กเพื่อป้องกัน expression ยาวเกินไป
+        a1 = [1, 2][Math.floor(Math.random() * 2)]
         a2 = [1, 2, 3][Math.floor(Math.random() * 3)]
-        m = Math.floor(Math.random() * 6) + 1
-        n = Math.floor(Math.random() * 6) + 1
+        m = Math.floor(Math.random() * 4) + 1  // 1-4
+        n = Math.floor(Math.random() * 4) + 1  // 1-4
+        
+        // สุ่มเครื่องหมาย (ลดโอกาส)
+        if (Math.random() < 0.3) m = -m
+        if (Math.random() < 0.3) n = -n
+      } else {
+        // ยาก: ค่าปานกลาง ไม่ให้ใหญ่เกินไป
+        a1 = [1, 2, 3][Math.floor(Math.random() * 3)]  
+        a2 = [1, 2, 3][Math.floor(Math.random() * 3)]  
+        m = Math.floor(Math.random() * 5) + 1  // 1-5
+        n = Math.floor(Math.random() * 5) + 1  // 1-5
         
         // สุ่มเครื่องหมาย
         if (Math.random() < 0.4) m = -m
         if (Math.random() < 0.4) n = -n
-      } else {
-        // ยาก: ค่าที่ซับซ้อนขึ้น
-        a1 = Math.floor(Math.random() * 4) + 1  // 1-4
-        a2 = Math.floor(Math.random() * 4) + 1  // 1-4
-        m = Math.floor(Math.random() * 8) + 1
-        n = Math.floor(Math.random() * 8) + 1
-        
-        // สุ่มเครื่องหมาย
-        if (Math.random() < 0.5) m = -m
-        if (Math.random() < 0.5) n = -n
       }
       
       // คำนวณสัมประสิทธิ์ จาก (a1*x + m)(a2*x + n) = a1*a2*x² + (a1*n + a2*m)x + m*n
