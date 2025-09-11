@@ -7,6 +7,13 @@ export interface Question {
   c: number
   // เพิ่ม method สำหรับเช็คคำตอบ
   checkAnswer?: (answer: string) => boolean
+  // เพิ่มข้อมูลการแยกตัวประกอบ
+  factorInfo?: {
+    a1: number
+    a2: number
+    m: number
+    n: number
+  }
 }
 
 export type QuestionType = 'polynomial' | 'equation' | 'integer' | 'fraction' | 'power' | 'root' | 'function' | 'arithmetic_sequence' | 'geometric_sequence' | 'arithmetic_series' | 'geometric_series'
@@ -18,7 +25,7 @@ export interface GeneratorOptions {
 }
 
 export class MathQuestionGenerator {
-  private generateFactors(difficulty: 'easy' | 'medium' | 'hard', maxConstantTerm: number): [number, number, number, number] {
+  private generateFactors(difficulty: 'easy' | 'medium' | 'hard', maxConstantTerm: number): [number, number, number, any] {
     let a = 1
     let p: number, q: number
 
@@ -77,9 +84,8 @@ export class MathQuestionGenerator {
         return this.generateFactors(difficulty, maxConstantTerm)
       }
       
-      // คืนค่า [a, b, c, factors_info] โดย factors_info เก็บข้อมูลการแยกตัวประกอบ
-      // เราจะใช้ a1, a2, m, n ในการสร้างคำตอบที่ถูกต้อง
-      return [a, b, c, a1 * 1000 + a2 * 100 + (m + 50) * 10 + (n + 50)] // encode ข้อมูลใน factors_info
+      // คืนค่า [a, b, c, factor_object] โดยใช้ object แทนการ encode
+      return [a, b, c, { a1, a2, m, n }]
     }
   }
 
@@ -112,16 +118,13 @@ export class MathQuestionGenerator {
     return expr
   }
 
-  private formatFactors(a: number, p: number, q: number, factorsInfo?: number): string {
+  private formatFactors(a: number, p: number, q: number, factorsInfo?: any): string {
     if (a === 1) {
       // กรณีง่าย: (x+p)(x+q)
       return `(x${this.formatSign(p)})(x${this.formatSign(q)})`
-    } else if (factorsInfo) {
-      // กรณีปานกลางและยาก: decode ข้อมูลจาก factorsInfo
-      const a1 = Math.floor(factorsInfo / 1000)
-      const a2 = Math.floor((factorsInfo % 1000) / 100)
-      const m = Math.floor((factorsInfo % 100) / 10) - 50
-      const n = (factorsInfo % 10) - 50
+    } else if (factorsInfo && typeof factorsInfo === 'object') {
+      // กรณีปานกลางและยาก: ใช้ข้อมูลจาก factorsInfo object
+      const { a1, a2, m, n } = factorsInfo
       
       // สร้าง (a1*x + m)(a2*x + n)
       const factor1 = this.formatComplexFactor(a1, m)
@@ -176,7 +179,7 @@ export class MathQuestionGenerator {
     }
   }
 
-  private generateDistractors(correctA: number, correctP: number, correctQ: number, factorsInfo?: number): string[] {
+  private generateDistractors(correctA: number, correctP: number, correctQ: number, factorsInfo?: any): string[] {
     const distractors = new Set<string>()
     const correct = this.formatFactors(correctA, correctP, correctQ, factorsInfo)
 
@@ -204,12 +207,9 @@ export class MathQuestionGenerator {
           if (distractors.size >= 3) break
         }
       }
-    } else if (factorsInfo) {
+    } else if (factorsInfo && typeof factorsInfo === 'object') {
       // กรณีปานกลางและยาก: สร้าง distractors สำหรับ (a1x+m)(a2x+n)
-      const a1 = Math.floor(factorsInfo / 1000)
-      const a2 = Math.floor((factorsInfo % 1000) / 100)
-      const m = Math.floor((factorsInfo % 100) / 10) - 50
-      const n = (factorsInfo % 10) - 50
+      const { a1, a2, m, n } = factorsInfo
       
       // ตัวลวงแบบที่ 1: สลับเครื่องหมาย constant
       distractors.add(`(${this.formatComplexFactor(a1, -m)})(${this.formatComplexFactor(a2, n)})`)
@@ -260,7 +260,7 @@ export class MathQuestionGenerator {
   }
 
   // ฟังก์ชันเช็คคำตอบแบบยืดหยุ่น - เช็คทั้ง 2 แบบ (x+a)(x+b) และ (x+b)(x+a)
-  private createAnswerChecker(correctAnswer: string, a: number, p: number, q: number, factorsInfo?: number): (answer: string) => boolean {
+  private createAnswerChecker(correctAnswer: string, a: number, p: number, q: number, factorsInfo?: any): (answer: string) => boolean {
     if (a === 1) {
       // กรณีง่าย: เช็คทั้ง 2 แบบ (x+p)(x+q) และ (x+q)(x+p)
       const correctOption1 = this.formatFactors(a, p, q)
@@ -269,12 +269,9 @@ export class MathQuestionGenerator {
       return (answer: string) => {
         return answer === correctOption1 || answer === correctOption2
       }
-    } else if (factorsInfo) {
+    } else if (factorsInfo && typeof factorsInfo === 'object') {
       // กรณีปานกลางและยาก: เช็คทั้ง 2 แบบ (a1x+m)(a2x+n) และ (a2x+n)(a1x+m)
-      const a1 = Math.floor(factorsInfo / 1000)
-      const a2 = Math.floor((factorsInfo % 1000) / 100)
-      const m = Math.floor((factorsInfo % 100) / 10) - 50
-      const n = (factorsInfo % 10) - 50
+      const { a1, a2, m, n } = factorsInfo
       
       const correctOption1 = `(${this.formatComplexFactor(a1, m)})(${this.formatComplexFactor(a2, n)})`
       const correctOption2 = `(${this.formatComplexFactor(a2, n)})(${this.formatComplexFactor(a1, m)})`
@@ -1212,7 +1209,8 @@ export class MathQuestionGenerator {
       a,
       b,
       c,
-      checkAnswer: this.createAnswerChecker(correctAnswer, a, Math.round(p), Math.round(q), factorsInfo)
+      checkAnswer: this.createAnswerChecker(correctAnswer, a, Math.round(p), Math.round(q), factorsInfo),
+      factorInfo: typeof factorsInfo === 'object' ? factorsInfo : undefined
     }
   }
 
