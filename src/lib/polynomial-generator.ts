@@ -865,7 +865,7 @@ export class MathQuestionGenerator {
       x = Math.floor(Math.random() * 4) + 1 // 1-4
       
       correctAnswer = a * x * x + b
-      functionExpr = `f(x) = ${a === 1 ? '' : a}x^2${b >= 0 ? '+' + b : b}`
+      functionExpr = `f(x) = ${a === 1 ? '' : a}x^{2}${b >= 0 ? '+' + b : b}`
     } else {
       // ยาก: f(x) = ax² + bx + c
       a = Math.floor(Math.random() * 3) + 1 // 1-3
@@ -874,7 +874,7 @@ export class MathQuestionGenerator {
       x = Math.floor(Math.random() * 3) + 1 // 1-3
       
       correctAnswer = a * x * x + b * x + c
-      functionExpr = `f(x) = ${a === 1 ? '' : a}x^2${b >= 0 ? '+' + b : b}x${c >= 0 ? '+' + c : c}`
+      functionExpr = `f(x) = ${a === 1 ? '' : a}x^{2}${b >= 0 ? '+' + b : b}x${c >= 0 ? '+' + c : c}`
     }
     
     // สร้างตัวเลือกผิด
