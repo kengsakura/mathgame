@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { supabase } from '@/lib/supabase'
-import { Plus, QrCode, Trash2, Users } from 'lucide-react'
+import { Plus, QrCode, Trash2, Users, Database } from 'lucide-react'
 import { SigmaSpinner } from '@/components/ui/sigma-spinner'
 import Link from 'next/link'
 
@@ -218,10 +218,18 @@ export default function AdminPage() {
           <div className="lg:col-span-2">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold text-gray-900">ชุดข้อสอบทั้งหมด</h2>
-              <Button onClick={() => setShowCreateForm(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                สร้างชุดใหม่
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" asChild>
+                  <Link href="/admin/questions">
+                    <Database className="h-4 w-4 mr-2" />
+                    จัดการคลังข้อสอบ
+                  </Link>
+                </Button>
+                <Button onClick={() => setShowCreateForm(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  สร้างชุดใหม่
+                </Button>
+              </div>
             </div>
 
             {showCreateForm && (
