@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback, use } from 'react'
+import { useState, useEffect, useCallback, use, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -18,7 +18,8 @@ interface Quiz {
   difficulty: 'easy' | 'medium' | 'hard'
   time_per_question: number
   total_questions: number
-  question_type: 'polynomial' | 'equation' | 'integer' | 'fraction' | 'power' | 'root' | 'function' | 'arithmetic_sequence' | 'geometric_sequence' | 'arithmetic_series' | 'geometric_series'
+  question_type: 'power' | 'root' | 'polynomial' | 'equation'
+  passing_threshold: number
 }
 
 interface GameState {
@@ -32,6 +33,7 @@ interface GameState {
   showResult: boolean
   lastAnswerCorrect: boolean
   startTime: number | null
+  isTransitioning: boolean // เพิ่ม flag เพื่อป้องกันการ transition ซ้ำ
 }
 
 export default function QuizPlayPage({ params }: { params: Promise<{ id: string }> }) {
@@ -41,6 +43,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
   const studentName = searchParams.get('name') || 'นักเรียน'
   
   const [quiz, setQuiz] = useState<Quiz | null>(null)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
   const [gameState, setGameState] = useState<GameState>({
     currentQuestion: 0,
     questions: [],
@@ -51,7 +54,8 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
     gameEnded: false,
     showResult: false,
     lastAnswerCorrect: false,
-    startTime: null
+    startTime: null,
+    isTransitioning: false
   })
 
   const generator = new MathQuestionGenerator()
@@ -75,20 +79,96 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
     loadQuiz()
   }, [loadQuiz])
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout
-    if (gameState.gameStarted && !gameState.gameEnded && gameState.timeLeft > 0) {
-      timer = setTimeout(() => {
-        setGameState(prev => ({
-          ...prev,
-          timeLeft: prev.timeLeft - 1
-        }))
-      }, 1000)
-    } else if (gameState.gameStarted && !gameState.gameEnded && gameState.timeLeft === 0) {
-      nextQuestion()
+  // จบเกม: สรุปคะแนนและบันทึกผล (ต้องมาก่อน goNextQuestion เพื่อให้เรียกได้)
+  const endGame = async () => {
+    if (!quiz) return
+
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
     }
-    return () => clearTimeout(timer)
-  }, [gameState.timeLeft, gameState.gameStarted, gameState.gameEnded])
+
+    const finalScore = gameState.answers.reduce((sum, ans, i) => {
+      const q = gameState.questions[i]
+      if (!q) return sum
+      const correct = q.checkAnswer ? q.checkAnswer(ans) : ans === q.correctAnswer
+      return sum + (correct ? 1 : 0)
+    }, 0)
+
+    console.log('Game ended with score:', finalScore, 'out of', quiz.total_questions)
+
+    setGameState(prev => ({
+      ...prev,
+      gameEnded: true,
+      timeLeft: 0
+    }))
+
+    const actualTimeUsed = gameState.startTime ?
+      Math.round((Date.now() - gameState.startTime) / 1000) :
+      quiz.total_questions * quiz.time_per_question
+
+    const { error } = await supabase.from('quiz_attempts').insert({
+      quiz_id: id,
+      student_name: studentName,
+      score: finalScore,
+      total_questions: quiz.total_questions,
+      time_taken: actualTimeUsed
+    })
+
+    if (error) {
+      console.error('Error saving quiz result:', error)
+    } else {
+      console.log('Quiz result saved successfully')
+    }
+  }
+
+  // ไปข้อถัดไป (วางไว้ก่อน useEffect ตัวจับเวลา เพื่อให้ TS ไม่เตือนใช้ก่อนประกาศ)
+  const goNextQuestion = useCallback(() => {
+    if (!quiz) return
+
+    if (gameState.currentQuestion < quiz.total_questions - 1) {
+      setGameState(prev => ({
+        ...prev,
+        currentQuestion: prev.currentQuestion + 1,
+        timeLeft: quiz.time_per_question,
+        isTransitioning: false
+      }))
+    } else {
+      endGame()
+    }
+  }, [gameState.currentQuestion, quiz])
+
+  useEffect(() => {
+    // จัดการ timer ด้วย ref เพื่อกัน race condition
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+
+    if (gameState.gameStarted && !gameState.gameEnded && !gameState.isTransitioning) {
+      if (gameState.timeLeft > 0) {
+        timerRef.current = setTimeout(() => {
+          setGameState(prev => ({ ...prev, timeLeft: prev.timeLeft - 1 }))
+        }, 1000)
+      } else if (gameState.timeLeft === 0) {
+        // ล็อค transition และไปข้อถัดไปอย่างปลอดภัย
+        setGameState(prev => ({ ...prev, isTransitioning: true }))
+        // เคลียร์ timer และเลื่อนไปข้อถัดไป
+        if (timerRef.current) {
+          clearTimeout(timerRef.current)
+          timerRef.current = null
+        }
+        goNextQuestion()
+      }
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
+    }
+  }, [gameState.timeLeft, gameState.gameStarted, gameState.gameEnded, gameState.isTransitioning, goNextQuestion])
 
   const startGame = () => {
     if (!quiz) return
@@ -109,19 +189,29 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
       gameEnded: false,
       showResult: false,
       lastAnswerCorrect: false,
-      startTime: Date.now()
+      startTime: Date.now(),
+      isTransitioning: false
     })
   }
 
   const selectAnswer = (answer: string) => {
+    // ป้องกันการเลือกคำตอบซ้ำ
+    if (gameState.showResult || gameState.isTransitioning) return
+
+    // หยุด timer ทันทีเพื่อกันการเลื่อนไปข้อถัดไปก่อนเวลา
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+
     const newAnswers = [...gameState.answers]
     newAnswers[gameState.currentQuestion] = answer
-    
+
     const currentQuestion = gameState.questions[gameState.currentQuestion]
-    const isCorrect = currentQuestion.checkAnswer ? 
-      currentQuestion.checkAnswer(answer) : 
+    const isCorrect = currentQuestion.checkAnswer ?
+      currentQuestion.checkAnswer(answer) :
       answer === currentQuestion.correctAnswer
-    
+
     let newScore = gameState.score
     if (isCorrect) {
       newScore++
@@ -132,7 +222,8 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
       answers: newAnswers,
       score: newScore,
       showResult: true,
-      lastAnswerCorrect: isCorrect
+      lastAnswerCorrect: isCorrect,
+      isTransitioning: true // ตั้ง flag เพื่อป้องกันการ transition ซ้ำ
     }))
 
     setTimeout(() => {
@@ -140,62 +231,11 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
         ...prev,
         showResult: false
       }))
-      nextQuestion()
+      goNextQuestion()
     }, 1000)
   }
 
-  const nextQuestion = useCallback(() => {
-    if (!quiz) return
-
-    if (gameState.currentQuestion < quiz.total_questions - 1) {
-      setGameState(prev => ({
-        ...prev,
-        currentQuestion: prev.currentQuestion + 1,
-        timeLeft: quiz.time_per_question
-      }))
-    } else {
-      endGame()
-    }
-  }, [gameState.currentQuestion, quiz])
-
-  const endGame = async () => {
-    if (!quiz) return
-
-    // คำนวณคะแนนจากคำตอบทั้งหมด เพื่อให้แน่ใจว่าได้คะแนนข้อสุดท้าย
-    let finalScore = 0
-    for (let i = 0; i < gameState.questions.length; i++) {
-      const question = gameState.questions[i]
-      const answer = gameState.answers[i]
-      if (answer) {
-        const isCorrect = question.checkAnswer ? 
-          question.checkAnswer(answer) : 
-          answer === question.correctAnswer
-        if (isCorrect) {
-          finalScore++
-        }
-      }
-    }
-    
-    setGameState(prev => ({
-      ...prev,
-      gameEnded: true,
-      timeLeft: 0
-    }))
-
-    // คำนวณเวลาที่ใช้จริง (วินาที)
-    const actualTimeUsed = gameState.startTime ? 
-      Math.round((Date.now() - gameState.startTime) / 1000) : 
-      quiz.total_questions * quiz.time_per_question
-
-    // บันทึกผลคะแนน
-    await supabase.from('quiz_attempts').insert({
-      quiz_id: id,
-      student_name: studentName,
-      score: finalScore,
-      total_questions: quiz.total_questions,
-      time_taken: actualTimeUsed
-    })
-  }
+  // ลบประกาศเดิม (ย้ายขึ้นบน)
 
   const restartQuiz = () => {
     if (!quiz) return
@@ -219,7 +259,8 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
       timeLeft: quiz.time_per_question,
       showResult: false,
       lastAnswerCorrect: false,
-      startTime: null
+      startTime: null,
+      isTransitioning: false
     })
   }
 
@@ -247,17 +288,10 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
 
   const getQuestionPrompt = (questionType: string) => {
     switch (questionType) {
-      case 'polynomial': return 'แยกตัวประกอบของพหุนามต่อไปนี้'
-      case 'equation': return 'แก้สมการต่อไปนี้'
-      case 'integer': return 'คำนวณผลลัพธ์ต่อไปนี้'
-      case 'fraction': return 'คำนวณเศษส่วนต่อไปนี้'
       case 'power': return 'คำนวณเลขยกกำลังต่อไปนี้'
       case 'root': return 'คำนวณรากที่ n ต่อไปนี้'
-      case 'function': return 'หาค่าฟังก์ชันต่อไปนี้'
-      case 'arithmetic_sequence': return 'ลำดับเลขคณิต'
-      case 'geometric_sequence': return 'ลำดับเรขาคณิต'
-      case 'arithmetic_series': return 'อนุกรมเลขคณิต'
-      case 'geometric_series': return 'อนุกรมเรขาคณิต'
+      case 'polynomial': return 'แยกตัวประกอบของพหุนามต่อไปนี้'
+      case 'equation': return 'แก้สมการต่อไปนี้'
       default: return 'แก้โจทย์ต่อไปนี้'
     }
   }
@@ -346,7 +380,8 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
   if (gameState.gameEnded) {
     const percentage = Math.round((gameState.score / quiz.total_questions) * 100)
     const scoreMessage = getScoreMessage(percentage)
-    
+    const hasPassed = percentage >= quiz.passing_threshold
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="container mx-auto px-4 py-8">
@@ -365,8 +400,15 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
                   <div className={`text-6xl font-bold mb-2 ${getScoreColor(gameState.score, quiz.total_questions)}`}>
                     {gameState.score}/{quiz.total_questions}
                   </div>
-                  <div className="text-2xl font-semibold text-gray-700 mb-4">
+                  <div className="text-2xl font-semibold text-gray-700 mb-2">
                     {percentage}%
+                  </div>
+                  <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium mb-4 ${
+                    hasPassed
+                      ? 'bg-green-100 text-green-800 border border-green-200'
+                      : 'bg-red-100 text-red-800 border border-red-200'
+                  }`}>
+                    {hasPassed ? '✅ ผ่านเกณฑ์' : '❌ ไม่ผ่านเกณฑ์'}
                   </div>
                   <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
                     <p className="text-orange-800 font-medium text-lg">
@@ -374,6 +416,9 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
                     </p>
                   </div>
                   <Progress value={percentage} className="w-full h-3" />
+                  <div className="text-sm text-gray-600 mt-2">
+                    เกณฑ์การผ่าน: {quiz.passing_threshold}% (ต้องการ {Math.ceil((quiz.passing_threshold / 100) * quiz.total_questions)}/{quiz.total_questions} ข้อ)
+                  </div>
                 </div>
 
                 <div className="bg-gray-50 rounded-lg p-4 space-y-2">
@@ -404,14 +449,16 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Button onClick={restartQuiz} variant="outline" size="lg">
                     ทำข้อสอบใหม่
                   </Button>
-                  <Button onClick={() => router.push(`/admin/quiz/${id}/results?from=student`)} variant="outline" size="lg">
-                    ดู Leaderboard
-                  </Button>
-                  <Button onClick={() => router.push('/student')} size="lg">
+                  {hasPassed && (
+                    <Button onClick={() => router.push(`/admin/quiz/${id}/results?from=student`)} variant="outline" size="lg">
+                      ดู Leaderboard
+                    </Button>
+                  )}
+                  <Button onClick={() => router.push('/student')} size="lg" className={hasPassed ? "sm:col-span-1" : "sm:col-span-2"}>
                     กลับหน้าหลัก
                   </Button>
                 </div>

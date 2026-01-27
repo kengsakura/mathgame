@@ -16,7 +16,7 @@ export interface Question {
   }
 }
 
-export type QuestionType = 'polynomial' | 'equation' | 'integer' | 'fraction' | 'power' | 'root' | 'function' | 'arithmetic_sequence' | 'geometric_sequence' | 'arithmetic_series' | 'geometric_series'
+export type QuestionType = 'power' | 'root' | 'polynomial' | 'equation' | 'derivative'
 
 export interface GeneratorOptions {
   difficulty: 'easy' | 'medium' | 'hard'
@@ -274,22 +274,36 @@ export class MathQuestionGenerator {
   // ฟังก์ชันเช็คคำตอบแบบยืดหยุ่น - เช็คทั้ง 2 แบบ (x+a)(x+b) และ (x+b)(x+a)
   private createAnswerChecker(correctAnswer: string, a: number, p: number, q: number, factorsInfo?: any): (answer: string) => boolean {
     if (a === 1) {
-      // กรณีง่าย: เช็คทั้ง 2 แบบ (x+p)(x+q) และ (x+q)(x+p)
+      // กรณีง่าย: เช็คทั้ง 2 แบบและรูปแบบคูณ -1 ทั้งสองวงเล็บ
       const correctOption1 = this.formatFactors(a, p, q)
       const correctOption2 = this.formatFactors(a, q, p)
+      const negOption1 = `(${this.formatComplexFactor(-1, -p)})(${this.formatComplexFactor(-1, -q)})`
+      const negOption2 = `(${this.formatComplexFactor(-1, -q)})(${this.formatComplexFactor(-1, -p)})`
       
       return (answer: string) => {
-        return answer === correctOption1 || answer === correctOption2
+        return (
+          answer === correctOption1 ||
+          answer === correctOption2 ||
+          answer === negOption1 ||
+          answer === negOption2
+        )
       }
     } else if (factorsInfo && typeof factorsInfo === 'object') {
-      // กรณีปานกลางและยาก: เช็คทั้ง 2 แบบ (a1x+m)(a2x+n) และ (a2x+n)(a1x+m)
+      // กรณีปานกลางและยาก: เช็คทั้ง 2 แบบ และรูปแบบคูณ -1 ทั้งสองวงเล็บ
       const { a1, a2, m, n } = factorsInfo
       
       const correctOption1 = `(${this.formatComplexFactor(a1, m)})(${this.formatComplexFactor(a2, n)})`
       const correctOption2 = `(${this.formatComplexFactor(a2, n)})(${this.formatComplexFactor(a1, m)})`
+      const negOption1 = `(${this.formatComplexFactor(-a1, -m)})(${this.formatComplexFactor(-a2, -n)})`
+      const negOption2 = `(${this.formatComplexFactor(-a2, -n)})(${this.formatComplexFactor(-a1, -m)})`
       
       return (answer: string) => {
-        return answer === correctOption1 || answer === correctOption2
+        return (
+          answer === correctOption1 ||
+          answer === correctOption2 ||
+          answer === negOption1 ||
+          answer === negOption2
+        )
       }
     } else {
       // fallback
@@ -688,58 +702,103 @@ export class MathQuestionGenerator {
   // ===== สำหรับเลขยกกำลัง =====
   private generatePowerQuestion(difficulty: 'easy' | 'medium' | 'hard'): Question {
     let base: number, exponent: number, correctAnswer: number
-    
-    if (difficulty === 'easy') {
-      // ฐานง่ายๆ กำลัง 2-3
-      base = [2, 3, 4, 5][Math.floor(Math.random() * 4)]
-      exponent = [2, 3][Math.floor(Math.random() * 2)]
-      correctAnswer = Math.pow(base, exponent)
-    } else if (difficulty === 'medium') {
-      // ฐานใหญ่ขึ้น หรือ ฐานลบ กำลัง 2-4
-      const useNegative = Math.random() < 0.3
-      base = useNegative ? -[2, 3, 4][Math.floor(Math.random() * 3)] : [2, 3, 4, 5, 6][Math.floor(Math.random() * 5)]
-      exponent = [2, 3, 4][Math.floor(Math.random() * 3)]
-      correctAnswer = Math.pow(base, exponent)
-    } else {
-      // ยาก: เลขยกกำลัง 0, 1 หรือ กำลังสูง
-      if (Math.random() < 0.4) {
-        // กำลัง 0 หรือ 1
-        base = Math.floor(Math.random() * 9) + 2 // 2-10
-        exponent = [0, 1][Math.floor(Math.random() * 2)]
+    let attempts = 0
+    const maxAttempts = 10
+
+    do {
+      attempts++
+
+      if (difficulty === 'easy') {
+        // ฐาน 2-5 กำลัง 2-4 (เลขยกกำลังแท้ๆ)
+        base = [2, 3, 4, 5][Math.floor(Math.random() * 4)]
+        exponent = [2, 3, 4][Math.floor(Math.random() * 3)]
+        correctAnswer = Math.pow(base, exponent)
+      } else if (difficulty === 'medium') {
+        // ฐาน 2-8 กำลัง 2-5 หรือ ฐานลบ กำลัง 2-3
+        const useNegative = Math.random() < 0.4
+        if (useNegative) {
+          base = -[2, 3, 4, 5][Math.floor(Math.random() * 4)]
+          exponent = [2, 3][Math.floor(Math.random() * 2)]
+        } else {
+          base = [2, 3, 4, 5, 6, 7, 8][Math.floor(Math.random() * 7)]
+          exponent = [2, 3, 4, 5][Math.floor(Math.random() * 4)]
+        }
         correctAnswer = Math.pow(base, exponent)
       } else {
-        // กำลังสูง
-        base = [2, 3][Math.floor(Math.random() * 2)]
-        exponent = [4, 5, 6][Math.floor(Math.random() * 3)]
-        correctAnswer = Math.pow(base, exponent)
+        // ยาก: ฐาน 2-10 กำลัง 3-6 หรือ กำลัง 0, 1
+        if (Math.random() < 0.6) {
+          // กำลังสูง
+          base = [2, 3, 4, 5, 6][Math.floor(Math.random() * 5)]
+          exponent = [3, 4, 5, 6][Math.floor(Math.random() * 4)]
+          correctAnswer = Math.pow(base, exponent)
+        } else {
+          // กำลัง 0 หรือ 1
+          base = [2, 3, 4, 5, 6, 7, 8, 9, 10][Math.floor(Math.random() * 9)]
+          exponent = [0, 1][Math.floor(Math.random() * 2)]
+          correctAnswer = Math.pow(base, exponent)
+        }
       }
+
+      // ตรวจสอบว่าผลลัพธ์เป็นจำนวนจริงและไม่ใช่ Infinity หรือ NaN
+      if (!isFinite(correctAnswer) || isNaN(correctAnswer)) {
+        continue
+      }
+
+      // ตรวจสอบว่าผลลัพธ์ไม่ใหญ่เกินไป (เลขยกกำลังแท้ๆ ไม่ควรเกินหลักล้าน)
+      if (Math.abs(correctAnswer) > 1000000) {
+        continue
+      }
+
+      // ตรวจสอบว่าผลลัพธ์เป็นจำนวนเต็มบวก (ยกเว้นเลข 0 และ 1)
+      if (correctAnswer < 0 || (correctAnswer === 0 && exponent > 0) || (correctAnswer === 1 && exponent !== 0)) {
+        continue
+      }
+
+    } while (attempts < maxAttempts)
+
+    // ถ้าไม่สามารถสร้างได้ ให้ใช้ค่าดีฟอลต์
+    if (attempts >= maxAttempts) {
+      base = 2
+      exponent = 3
+      correctAnswer = 8
     }
 
     const expression = base < 0 ? `(${base})^{${exponent}}` : `${base}^{${exponent}}`
-    
-    // สร้างตัวเลือกผิด
+
+    // สร้างตัวเลือกผิดแบบเลขยกกำลังแท้ๆ
     const distractors = new Set<string>()
-    
+
     const possibleDistractors = [
-      (correctAnswer + Math.floor(Math.random() * 10) + 1).toString(),
-      (correctAnswer - Math.floor(Math.random() * 10) - 1).toString(),
-      (base * exponent).toString(), // ผิดพลาดทั่วไป: คูณแทนที่จะยกกำลัง
-      (base + exponent).toString(), // ผิดพลาดทั่วไป: บวกแทนที่จะยกกำลัง
+      // ผิดพลาดทั่วไป: คูณแทนยกกำลัง
+      (base * exponent).toString(),
+      // ผิดพลาดทั่วไป: บวกแทนยกกำลัง
+      (base + exponent).toString(),
+      // ยกกำลังผิดพลาด: เพิ่ม/ลดเลขชี้กำลัง
       Math.pow(base, exponent + 1).toString(),
       Math.pow(base, Math.max(1, exponent - 1)).toString(),
-      Math.pow(base + 1, exponent).toString()
+      // ยกกำลังผิดพลาด: เปลี่ยนฐาน
+      Math.pow(base + 1, exponent).toString(),
+      Math.pow(base - 1, exponent).toString(),
+      // ผิดพลาด: ใช้ฐานเป็นเลขชี้กำลัง
+      Math.pow(exponent, base).toString(),
+      // ผิดพลาด: รากที่สองแทนยกกำลัง
+      Math.pow(base, 1/exponent).toString()
     ]
-    
+
     // เลือกตัวเลือกที่ไม่ซ้ำกับคำตอบที่ถูก
     for (const distractor of possibleDistractors) {
-      if (distractor !== correctAnswer.toString() && distractors.size < 3) {
+      const numDistractor = parseFloat(distractor)
+      if (!isNaN(numDistractor) && isFinite(numDistractor) && numDistractor > 0 &&
+          distractor !== correctAnswer.toString() && distractors.size < 3) {
         distractors.add(distractor)
       }
     }
-    
+
     // เติมตัวเลือกเพิ่มหากยังไม่ครบ
     while (distractors.size < 3) {
-      const randomDistractor = (Math.floor(Math.random() * 100) + 1).toString()
+      const randomBase = [2, 3, 4, 5, 6][Math.floor(Math.random() * 5)]
+      const randomExponent = [2, 3, 4][Math.floor(Math.random() * 3)]
+      const randomDistractor = Math.pow(randomBase, randomExponent).toString()
       if (randomDistractor !== correctAnswer.toString()) {
         distractors.add(randomDistractor)
       }
@@ -757,62 +816,81 @@ export class MathQuestionGenerator {
   private generateRootQuestion(difficulty: 'easy' | 'medium' | 'hard'): Question {
     const rootType = [2, 3, 4][Math.floor(Math.random() * 3)] // รากที่ 2, 3, หรือ 4
     let baseNumber: number
-    
-    if (rootType === 2) { // รากที่ 2
-      if (difficulty === 'easy') {
-        // ง่าย: กำลังสองที่สมบูรณ์ไม่เกิน 100
-        const perfectSquares = [4, 9, 16, 25, 36, 49, 64, 81, 100]
-        baseNumber = perfectSquares[Math.floor(Math.random() * perfectSquares.length)]
-      } else if (difficulty === 'medium') {
-        // ปานกลาง: กำลังสองที่สมบูรณ์ไม่เกิน 400
-        const perfectSquares = [121, 144, 169, 196, 225, 256, 289, 324, 361, 400]
-        baseNumber = perfectSquares[Math.floor(Math.random() * perfectSquares.length)]
-      } else {
-        // ยาก: กำลังสองที่สมบูรณ์ไม่เกิน 1000
-        const perfectSquares = [441, 484, 529, 576, 625, 676, 729, 784, 841, 900, 961]
-        baseNumber = perfectSquares[Math.floor(Math.random() * perfectSquares.length)]
+    let correctAnswer: number
+    let attempts = 0
+    const maxAttempts = 10
+
+    do {
+      attempts++
+
+      if (rootType === 2) { // รากที่ 2
+        if (difficulty === 'easy') {
+          // ง่าย: กำลังสองที่สมบูรณ์ไม่เกิน 100
+          const perfectSquares = [4, 9, 16, 25, 36, 49, 64, 81, 100]
+          baseNumber = perfectSquares[Math.floor(Math.random() * perfectSquares.length)]
+        } else if (difficulty === 'medium') {
+          // ปานกลาง: กำลังสองที่สมบูรณ์ไม่เกิน 400
+          const perfectSquares = [121, 144, 169, 196, 225, 256, 289, 324, 361, 400]
+          baseNumber = perfectSquares[Math.floor(Math.random() * perfectSquares.length)]
+        } else {
+          // ยาก: กำลังสองที่สมบูรณ์ไม่เกิน 1000
+          const perfectSquares = [441, 484, 529, 576, 625, 676, 729, 784, 841, 900, 961]
+          baseNumber = perfectSquares[Math.floor(Math.random() * perfectSquares.length)]
+        }
+      } else if (rootType === 3) { // รากที่ 3
+        if (difficulty === 'easy') {
+          // ง่าย: กำลังสามที่สมบูรณ์ไม่เกิน 64
+          const perfectCubes = [8, 27, 64]
+          baseNumber = perfectCubes[Math.floor(Math.random() * perfectCubes.length)]
+        } else if (difficulty === 'medium') {
+          // ปานกลาง: กำลังสามที่สมบูรณ์ไม่เกิน 216
+          const perfectCubes = [125, 216]
+          baseNumber = perfectCubes[Math.floor(Math.random() * perfectCubes.length)]
+        } else {
+          // ยาก: กำลังสามที่สมบูรณ์ไม่เกิน 1000
+          const perfectCubes = [343, 512, 729, 1000]
+          baseNumber = perfectCubes[Math.floor(Math.random() * perfectCubes.length)]
+        }
+      } else { // รากที่ 4
+        if (difficulty === 'easy') {
+          // ง่าย: กำลังสี่ที่สมบูรณ์ไม่เกิน 81
+          const perfectFourths = [16, 81]
+          baseNumber = perfectFourths[Math.floor(Math.random() * perfectFourths.length)]
+        } else if (difficulty === 'medium') {
+          // ปานกลาง: กำลังสี่ที่สมบูรณ์ไม่เกิน 625
+          const perfectFourths = [256, 625]
+          baseNumber = perfectFourths[Math.floor(Math.random() * perfectFourths.length)]
+        } else {
+          // ยาก: กำลังสี่ที่สมบูรณ์ไม่เกิน 1000
+          const perfectFourths = [16, 81, 256, 625]
+          baseNumber = perfectFourths[Math.floor(Math.random() * perfectFourths.length)]
+        }
       }
-    } else if (rootType === 3) { // รากที่ 3
-      if (difficulty === 'easy') {
-        // ง่าย: กำลังสามที่สมบูรณ์ไม่เกิน 64
-        const perfectCubes = [8, 27, 64]
-        baseNumber = perfectCubes[Math.floor(Math.random() * perfectCubes.length)]
-      } else if (difficulty === 'medium') {
-        // ปานกลาง: กำลังสามที่สมบูรณ์ไม่เกิน 216
-        const perfectCubes = [125, 216]
-        baseNumber = perfectCubes[Math.floor(Math.random() * perfectCubes.length)]
-      } else {
-        // ยาก: กำลังสามที่สมบูรณ์ไม่เกิน 1000
-        const perfectCubes = [343, 512, 729, 1000]
-        baseNumber = perfectCubes[Math.floor(Math.random() * perfectCubes.length)]
+
+      correctAnswer = Math.round(Math.pow(baseNumber, 1/rootType))
+
+      // ตรวจสอบว่าเป็นกำลังสมบูรณ์จริง (เพื่อป้องกัน floating point error)
+      const checkResult = Math.pow(correctAnswer, rootType)
+      if (Math.abs(checkResult - baseNumber) > 0.0001) {
+        continue
       }
-    } else { // รากที่ 4
-      if (difficulty === 'easy') {
-        // ง่าย: กำลังสี่ที่สมบูรณ์ไม่เกิน 81
-        const perfectFourths = [16, 81]
-        baseNumber = perfectFourths[Math.floor(Math.random() * perfectFourths.length)]
-      } else if (difficulty === 'medium') {
-        // ปานกลาง: กำลังสี่ที่สมบูรณ์ไม่เกิน 625
-        const perfectFourths = [256, 625]
-        baseNumber = perfectFourths[Math.floor(Math.random() * perfectFourths.length)]
-      } else {
-        // ยาก: กำลังสี่ที่สมบูรณ์ไม่เกิน 1000
-        const perfectFourths = [16, 81, 256, 625]
-        baseNumber = perfectFourths[Math.floor(Math.random() * perfectFourths.length)]
+
+      // ตรวจสอบว่าผลลัพธ์เป็นจำนวนบวก
+      if (correctAnswer <= 0) {
+        continue
       }
+
+    } while (attempts < maxAttempts)
+
+    // ถ้าไม่สามารถสร้างได้ ให้ใช้ค่าดีฟอลต์
+    if (attempts >= maxAttempts) {
+      baseNumber = 4
+      correctAnswer = 2
     }
-    
-    const correctAnswer = Math.round(Math.pow(baseNumber, 1/rootType))
-    
-    // ตรวจสอบว่าเป็นกำลังสมบูรณ์จริง (เพื่อป้องกัน floating point error)
-    if (Math.pow(correctAnswer, rootType) !== baseNumber) {
-      // ถ้าไม่ตรงให้สร้างใหม่
-      return this.generateRootQuestion(difficulty)
-    }
-    
+
     // สร้างตัวเลือกผิด
     const distractors = new Set<string>()
-    
+
     const possibleDistractors = [
       (correctAnswer + 1).toString(),
       (correctAnswer - 1).toString(),
@@ -822,14 +900,16 @@ export class MathQuestionGenerator {
       Math.ceil(Math.sqrt(baseNumber * 2)).toString(),
       (correctAnswer * 2).toString()
     ]
-    
+
     // เลือกตัวเลือกที่ไม่ซ้ำกับคำตอบที่ถูก
     for (const distractor of possibleDistractors) {
-      if (distractor !== correctAnswer.toString() && distractors.size < 3 && parseInt(distractor) > 0) {
+      const numDistractor = parseInt(distractor)
+      if (!isNaN(numDistractor) && numDistractor > 0 &&
+          distractor !== correctAnswer.toString() && distractors.size < 3) {
         distractors.add(distractor)
       }
     }
-    
+
     // เติมตัวเลือกเพิ่มหากยังไม่ครบ
     while (distractors.size < 3) {
       const randomDistractor = (Math.floor(Math.random() * 20) + 1).toString()
@@ -1179,30 +1259,150 @@ export class MathQuestionGenerator {
   }
 
 
+  // ===== สำหรับการหาอนุพันธ์ =====
+  private generateDerivativeQuestion(difficulty: 'easy' | 'medium' | 'hard'): Question {
+    // Helper function to format term like 3x^2
+    const formatTerm = (coeff: number, power: number, isFirst: boolean) => {
+      if (coeff === 0) return ''
+      
+      let str = ''
+      if (!isFirst) {
+        str += coeff > 0 ? ' + ' : ' - '
+      } else if (coeff < 0) {
+        str += '-'
+      }
+      
+      const absCoeff = Math.abs(coeff)
+      if (absCoeff !== 1 || power === 0) str += absCoeff // Show coeff if not 1 or it's a constant
+      
+      if (power !== 0) {
+        str += 'x'
+        if (power !== 1) str += `^{${power}}`
+      }
+      return str
+    }
+
+    let terms: { c: number, p: number }[] = []
+    
+    if (difficulty === 'easy') {
+      // f(x) = ax^n + b
+      // Term 1
+      const n = Math.floor(Math.random() * 4) + 2 // power 2-5
+      const a = Math.floor(Math.random() * 9) + 1  // coeff 1-9
+      terms.push({ c: a, p: n })
+      
+      // Term 2 (constant or x)
+      if (Math.random() > 0.5) {
+        const b = Math.floor(Math.random() * 19) - 9 // -9 to 9
+        terms.push({ c: b, p: 0 })
+      } else {
+        const b = Math.floor(Math.random() * 9) + 1
+        terms.push({ c: b, p: 1 })
+      }
+    } else if (difficulty === 'medium') {
+      // f(x) = ax^n + bx^m + c
+      const n = Math.floor(Math.random() * 3) + 3 // power 3-5
+      const a = Math.floor(Math.random() * 9) + 2
+      terms.push({ c: a, p: n })
+      
+      const m = Math.floor(Math.random() * (n - 2)) + 2 // power 2 to n-1
+      const b = Math.floor(Math.random() * 15) - 7 // -7 to 7
+      if (b !== 0) terms.push({ c: b, p: m })
+      
+      const c = Math.floor(Math.random() * 15) - 7
+      if (c !== 0) terms.push({ c: c, p: Math.random() > 0.5 ? 1 : 0 })
+    } else {
+      // Hard: multiple terms, higher powers, maybe negative coeff
+      const n = Math.floor(Math.random() * 3) + 4 // power 4-6
+      const a = Math.floor(Math.random() * 9) + 2
+      terms.push({ c: a, p: n })
+      
+      const m = n - 1
+      const b = Math.floor(Math.random() * 15) - 7
+      if (b !== 0) terms.push({ c: b, p: m })
+      
+      const k = Math.floor(Math.random() * (m - 1)) + 1
+      const c = Math.floor(Math.random() * 15) - 7
+      if (c !== 0) terms.push({ c: c, p: k })
+      
+      const d = Math.floor(Math.random() * 20) - 10
+      if (d !== 0) terms.push({ c: d, p: 0 })
+    }
+
+    // Build question expression: f(x) = ...
+    let expressionStr = ''
+    terms.forEach((term, index) => {
+      expressionStr += formatTerm(term.c, term.p, index === 0)
+    })
+    
+    // Calculate derivative
+    let derivativeTerms = terms.map(term => {
+      if (term.p === 0) return { c: 0, p: 0 }
+      return { c: term.c * term.p, p: term.p - 1 }
+    }).filter(term => term.c !== 0)
+
+    if (derivativeTerms.length === 0) {
+      derivativeTerms.push({ c: 0, p: 0 })
+    }
+
+    let answerStr = ''
+    derivativeTerms.forEach((term, index) => {
+      answerStr += formatTerm(term.c, term.p, index === 0)
+    })
+    if (answerStr === '') answerStr = '0'
+
+    // Generate distractors
+    const distractors = new Set<string>()
+    while (distractors.size < 3) {
+      // Create fake derivatives
+      const type = Math.floor(Math.random() * 4)
+      let fakeTerms: {c: number, p: number}[] = []
+      
+      if (type === 0) {
+        // Forgot to reduce power: nx^n
+        fakeTerms = terms.map(t => t.p === 0 ? {c:0, p:0} : {c: t.c * t.p, p: t.p}).filter(t => t.c !== 0)
+      } else if (type === 1) {
+        // Did not multiply by power: x^{n-1}
+        fakeTerms = terms.map(t => t.p === 0 ? {c:0, p:0} : {c: t.c, p: t.p - 1}).filter(t => t.c !== 0)
+      } else if (type === 2) {
+        // Intergrate instead: (c/(p+1))x^{p+1} - approximated to simple nums for distractor
+        fakeTerms = terms.map(t => ({c: t.c, p: t.p + 1})).filter(t => t.c !== 0)
+      } else {
+         // Random coefficient changes
+         fakeTerms = derivativeTerms.map(t => ({c: t.c + (Math.random() > 0.5 ? 1 : -1), p: t.p})).filter(t => t.c !== 0)
+      }
+
+      let fakeStr = ''
+      fakeTerms.forEach((term, index) => {
+        fakeStr += formatTerm(term.c, term.p, index === 0)
+      })
+      if (fakeStr === '') fakeStr = '0'
+      
+      if (fakeStr !== answerStr) {
+        distractors.add(fakeStr)
+      }
+    }
+
+    return {
+      expression: `จงหาอนุพันธ์ของ $f(x) = ${expressionStr}$`,
+      correctAnswer: `$${answerStr}$`,
+      choices: this.shuffleArray([`$${answerStr}$`, ...Array.from(distractors).map(d => `$${d}$`)]),
+      a: 0, b: 0, c: 0
+    }
+  }
+
   generateQuestion(options: GeneratorOptions): Question {
     const questionType = options.questionType || 'polynomial'
 
     switch (questionType) {
+      case 'derivative':
+        return this.generateDerivativeQuestion(options.difficulty)
       case 'equation':
         return this.generateEquationQuestion(options.difficulty)
-      case 'integer':
-        return this.generateIntegerQuestion(options.difficulty)
-      case 'fraction':
-        return this.generateFractionQuestion(options.difficulty)
       case 'power':
         return this.generatePowerQuestion(options.difficulty)
       case 'root':
         return this.generateRootQuestion(options.difficulty)
-      case 'function':
-        return this.generateFunctionQuestion(options.difficulty)
-      case 'arithmetic_sequence':
-        return this.generateArithmeticSequenceQuestion(options.difficulty)
-      case 'geometric_sequence':
-        return this.generateGeometricSequenceQuestion(options.difficulty)
-      case 'arithmetic_series':
-        return this.generateArithmeticSeriesQuestion(options.difficulty)
-      case 'geometric_series':
-        return this.generateGeometricSeriesQuestion(options.difficulty)
       case 'polynomial':
       default:
         return this.generatePolynomialQuestion(options)
@@ -1224,8 +1424,10 @@ export class MathQuestionGenerator {
       }
       
       const sqrt = Math.sqrt(discriminant)
-      p = (-b + sqrt) / 2
-      q = (-b - sqrt) / 2
+      // หา p และ q โดยตรงจากเงื่อนไข p+q=b และ pq=c
+      // รากของสมการ X^2 - bX + c = 0 คือ p และ q
+      p = (b + sqrt) / 2
+      q = (b - sqrt) / 2
       
       if (!Number.isInteger(p) || !Number.isInteger(q)) {
         return this.generatePolynomialQuestion(options)
@@ -1260,18 +1462,53 @@ export class MathQuestionGenerator {
     const questions: Question[] = []
     const usedExpressions = new Set<string>()
 
-    for (let i = 0; i < count; i++) {
-      let question: Question
-      let attempts = 0
-      
-      do {
-        question = this.generateQuestion(options)
-        attempts++
-      } while (usedExpressions.has(question.expression) && attempts < 50)
+    // ถ้าเจาะจงประเภทมา ให้ใช้ประเภทนั้นทั้งหมด
+    // ถ้าไม่เจาะจง ค่อยสุ่มจากชุดค่าเริ่มต้น (ให้น้ำหนัก power)
+    const availableTypes: QuestionType[] = options.questionType
+      ? [options.questionType]
+      : [
+          'power', 'power', 'power', 'power', 'power',
+          'root', 'root',
+          'polynomial', 'equation'
+        ]
 
-      if (attempts < 50) {
-        usedExpressions.add(question.expression)
+    for (let i = 0; i < count; i++) {
+      let question: Question | null = null
+      let attempts = 0
+      const maxAttempts = 100 // เพิ่มจำนวนครั้งสูงสุด
+
+      while (question === null && attempts < maxAttempts) {
+        attempts++
+
+        // เลือกประเภทโจทย์ตามที่ระบุ (หรือสุ่มจาก availableTypes)
+        const chosenType = availableTypes[Math.floor(Math.random() * availableTypes.length)]
+        const questionOptions = { ...options, questionType: chosenType }
+
+        try {
+          const candidateQuestion = this.generateQuestion(questionOptions)
+
+          // ตรวจสอบว่ามีโจทย์นี้อยู่แล้วหรือไม่
+          if (!usedExpressions.has(candidateQuestion.expression)) {
+            question = candidateQuestion
+            usedExpressions.add(candidateQuestion.expression)
+          }
+        } catch (error) {
+          // ถ้ามีข้อผิดพลาด ให้ลองใหม่
+          console.warn(`Error generating question attempt ${attempts}:`, error)
+          continue
+        }
+      }
+
+      if (question) {
         questions.push(question)
+      } else {
+        // ถ้าไม่สามารถสร้างโจทย์ได้ ให้สร้างโจทย์ polynomial แทน
+        console.warn(`Could not generate unique question after ${maxAttempts} attempts, using polynomial fallback`)
+        const fallbackQuestion = this.generateQuestion({ ...options, questionType: 'polynomial' })
+        if (!usedExpressions.has(fallbackQuestion.expression)) {
+          questions.push(fallbackQuestion)
+          usedExpressions.add(fallbackQuestion.expression)
+        }
       }
     }
 

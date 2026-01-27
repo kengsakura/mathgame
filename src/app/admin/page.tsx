@@ -14,8 +14,9 @@ interface Quiz {
   difficulty: 'easy' | 'medium' | 'hard'
   time_per_question: number
   total_questions: number
-  question_type: 'polynomial' | 'equation' | 'integer' | 'fraction' | 'power' | 'root' | 'function'
+  question_type: 'power' | 'root' | 'polynomial' | 'equation' | 'derivative'
   created_at: string
+  passing_threshold: number
 }
 
 export default function AdminPage() {
@@ -29,7 +30,8 @@ export default function AdminPage() {
     difficulty: 'easy' as 'easy' | 'medium' | 'hard',
     time_per_question: 20,
     total_questions: 10,
-    question_type: 'polynomial' as 'polynomial' | 'equation' | 'integer' | 'fraction' | 'power' | 'root' | 'function'
+    question_type: 'polynomial' as 'power' | 'root' | 'polynomial' | 'equation' | 'derivative',
+    passing_threshold: 60,
   })
 
   useEffect(() => {
@@ -77,7 +79,8 @@ export default function AdminPage() {
         difficulty: 'easy',
         time_per_question: 20,
         total_questions: 10,
-        question_type: 'polynomial'
+        question_type: 'polynomial',
+        passing_threshold: 60,
       })
     }
   }
@@ -111,11 +114,9 @@ export default function AdminPage() {
     switch (questionType) {
       case 'polynomial': return 'แยกตัวประกอบ'
       case 'equation': return 'แก้สมการ'
-      case 'integer': return 'จำนวนเต็ม'
-      case 'fraction': return 'เศษส่วน'
       case 'power': return 'เลขยกกำลัง'
       case 'root': return 'รากที่ n'
-      case 'function': return 'ฟังก์ชัน'
+      case 'derivative': return 'อนุพันธ์'
       default: return questionType
     }
   }
@@ -230,16 +231,14 @@ export default function AdminPage() {
                     <label className="block text-sm font-medium mb-2">ประเภทข้อสอบ</label>
                     <select
                       value={formData.question_type}
-                      onChange={(e) => setFormData({ ...formData, question_type: e.target.value as 'polynomial' | 'equation' | 'integer' | 'fraction' | 'power' | 'root' | 'function' })}
+                      onChange={(e) => setFormData({ ...formData, question_type: e.target.value as 'power' | 'root' | 'polynomial' | 'equation' | 'derivative' })}
                       className="w-full px-3 py-2 border rounded-lg"
                     >
-                      <option value="polynomial">แยกตัวประกอบพหุนาม</option>
-                      <option value="equation">แก้สมการ (เชิงเส้น/กำลังสอง)</option>
-                      <option value="integer">คำนวณจำนวนเต็ม (+, -, ×, ÷)</option>
-                      <option value="fraction">คำนวณเศษส่วน (+, -, ×, ÷)</option>
                       <option value="power">เลขยกกำลัง (a^n)</option>
                       <option value="root">รากที่ n (√, ∛, ∜)</option>
-                      <option value="function">การหาค่าฟังก์ชัน f(x)</option>
+                      <option value="polynomial">แยกตัวประกอบพหุนาม</option>
+                      <option value="equation">แก้สมการ (เชิงเส้น/กำลังสอง)</option>
+                      <option value="derivative">อนุพันธ์ของฟังก์ชัน (f'(x))</option>
                     </select>
                   </div>
 
@@ -279,6 +278,20 @@ export default function AdminPage() {
                     </div>
                   </div>
 
+                  <div>
+                    <label className="block text-sm font-medium mb-2">เกณฑ์ผ่าน (%)</label>
+                    <Input
+                      type="number"
+                      value={formData.passing_threshold}
+                      onChange={(e) => {
+                        const v = Math.max(0, Math.min(100, parseInt(e.target.value) || 0))
+                        setFormData({ ...formData, passing_threshold: v })
+                      }}
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+
                   <div className="flex gap-2 pt-4">
                     <Button onClick={createQuiz} disabled={!formData.name}>
                       สร้างชุดข้อสอบ
@@ -309,6 +322,7 @@ export default function AdminPage() {
                         <div className="flex items-center gap-4 text-sm text-gray-600">
                           <span>{quiz.total_questions} ข้อ</span>
                           <span>{quiz.time_per_question} วิ/ข้อ</span>
+                          <span>เกณฑ์ผ่าน {quiz.passing_threshold}%</span>
                           <span>สร้างเมื่อ {new Date(quiz.created_at).toLocaleDateString('th-TH')}</span>
                         </div>
                       </div>

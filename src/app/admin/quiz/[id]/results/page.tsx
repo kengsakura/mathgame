@@ -13,6 +13,8 @@ interface Quiz {
   difficulty: 'easy' | 'medium' | 'hard'
   time_per_question: number
   total_questions: number
+  question_type: 'power' | 'root' | 'polynomial' | 'equation'
+  passing_threshold: number
 }
 
 interface QuizAttempt {
@@ -96,25 +98,45 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
   }
 
   const getStats = () => {
-    if (attempts.length === 0) {
+    if (attempts.length === 0 || !quiz) {
       return {
         totalAttempts: 0,
         averageScore: 0,
         highestScore: 0,
-        averageTime: 0
+        averageTime: 0,
+        passedCount: 0
       }
     }
 
+    // กรองเฉพาะผู้ที่ผ่านเกณฑ์
+    const passedAttempts = attempts.filter(attempt => {
+      const percentage = (attempt.score / attempt.total_questions) * 100
+      return percentage >= quiz.passing_threshold
+    })
+
     const totalAttempts = attempts.length
-    const averageScore = attempts.reduce((sum, attempt) => sum + attempt.score, 0) / totalAttempts
-    const highestScore = Math.max(...attempts.map(a => a.score))
-    const averageTime = attempts.reduce((sum, attempt) => sum + attempt.time_taken, 0) / totalAttempts
+    const passedCount = passedAttempts.length
+
+    if (passedCount === 0) {
+      return {
+        totalAttempts,
+        averageScore: 0,
+        highestScore: 0,
+        averageTime: 0,
+        passedCount
+      }
+    }
+
+    const averageScore = passedAttempts.reduce((sum, attempt) => sum + attempt.score, 0) / passedCount
+    const highestScore = Math.max(...passedAttempts.map(a => a.score))
+    const averageTime = passedAttempts.reduce((sum, attempt) => sum + attempt.time_taken, 0) / passedCount
 
     return {
       totalAttempts,
-      averageScore: Math.round((averageScore / (quiz?.total_questions || 1)) * 100),
+      averageScore: Math.round((averageScore / quiz.total_questions) * 100),
       highestScore,
-      averageTime: Math.round(averageTime)
+      averageTime: Math.round(averageTime),
+      passedCount
     }
   }
 
@@ -184,12 +206,20 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
 
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
             <Card className="border-0 bg-white/70 backdrop-blur-sm">
               <CardContent className="p-6 text-center">
                 <User className="h-8 w-8 text-blue-600 mx-auto mb-2" />
                 <div className="text-2xl font-bold text-gray-900">{stats.totalAttempts}</div>
                 <div className="text-sm text-gray-600">คนทำข้อสอบ</div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 bg-white/70 backdrop-blur-sm">
+              <CardContent className="p-6 text-center">
+                <Trophy className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                <div className="text-2xl font-bold text-gray-900">{stats.passedCount}</div>
+                <div className="text-sm text-gray-600">คนผ่านเกณฑ์</div>
               </CardContent>
             </Card>
 
@@ -250,40 +280,55 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {attempts.map((attempt, index) => (
-                    <div
-                      key={attempt.id}
-                      className="flex items-center justify-between p-4 bg-gray-50/50 rounded-lg hover:bg-gray-100/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-sm font-bold">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-gray-900">
-                            {attempt.student_name}
+                  {attempts
+                    .filter(attempt => {
+                      const percentage = (attempt.score / attempt.total_questions) * 100
+                      return percentage >= quiz.passing_threshold
+                    })
+                    .map((attempt, index) => {
+                      const percentage = (attempt.score / attempt.total_questions) * 100
+                      const hasPassed = percentage >= quiz.passing_threshold
+
+                      return (
+                        <div
+                          key={attempt.id}
+                          className="flex items-center justify-between p-4 bg-gray-50/50 rounded-lg hover:bg-gray-100/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                              hasPassed ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'
+                            }`}>
+                              {index + 1}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-gray-900 flex items-center gap-2">
+                                {attempt.student_name}
+                                {hasPassed && <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">ผ่าน</span>}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                {new Date(attempt.completed_at).toLocaleString('th-TH')}
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-sm text-gray-600">
-                            {new Date(attempt.completed_at).toLocaleString('th-TH')}
+
+                          <div className="flex items-center gap-4 text-right">
+                            <div>
+                              <div className={`text-lg font-bold ${getScoreColor(attempt.score, attempt.total_questions)}`}>
+                                {attempt.score}/{attempt.total_questions}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                {formatTime(attempt.time_taken)}
+                              </div>
+                            </div>
+                            <div className={`px-3 py-1 rounded-full text-sm font-medium ${getScoreBadgeColor(attempt.score, attempt.total_questions)}`}>
+                              {Math.round(percentage)}%
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-4 text-right">
-                        <div>
-                          <div className={`text-lg font-bold ${getScoreColor(attempt.score, attempt.total_questions)}`}>
-                            {attempt.score}/{attempt.total_questions}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            {formatTime(attempt.time_taken)}
-                          </div>
-                        </div>
-                        <div className={`px-3 py-1 rounded-full text-sm font-medium ${getScoreBadgeColor(attempt.score, attempt.total_questions)}`}>
-                          {Math.round((attempt.score / attempt.total_questions) * 100)}%
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                      )
+                    })}
+
+                  {/* ไม่แสดงผู้ที่ไม่ผ่านบน Leaderboard ตามเงื่อนไข */}
                 </div>
               )}
             </CardContent>

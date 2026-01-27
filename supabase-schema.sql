@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS public.quizzes (
     difficulty text NOT NULL CHECK (difficulty IN ('easy', 'medium', 'hard')),
     time_per_question integer DEFAULT 20 CHECK (time_per_question > 0),
     total_questions integer DEFAULT 10 CHECK (total_questions > 0),
+    question_type text DEFAULT 'power' CHECK (question_type IN ('power', 'root', 'polynomial', 'equation')),
+    passing_threshold integer DEFAULT 60 CHECK (passing_threshold >= 0 AND passing_threshold <= 100),
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
     created_by text DEFAULT 'admin' NOT NULL
 );
@@ -37,10 +39,10 @@ CREATE POLICY "Allow all access to quiz_attempts" ON public.quiz_attempts
     FOR ALL USING (true) WITH CHECK (true);
 
 -- สร้างข้อมูลตัวอย่าง (optional)
-INSERT INTO public.quizzes (name, difficulty, time_per_question, total_questions) VALUES
-('การแยกตัวประกอบ ระดับง่าย', 'easy', 30, 10),
-('การแยกตัวประกอบ ระดับปานกลาง', 'medium', 25, 15),
-('การแยกตัวประกอบ ระดับยาก', 'hard', 20, 20);
+INSERT INTO public.quizzes (name, difficulty, time_per_question, total_questions, question_type, passing_threshold) VALUES
+('เลขยกกำลัง ระดับง่าย', 'easy', 30, 10, 'power', 60),
+('เลขยกกำลัง ระดับปานกลาง', 'medium', 25, 15, 'power', 70),
+('เลขยกกำลัง ระดับยาก', 'hard', 20, 20, 'power', 80);
 
 -- คำแนะนำสำหรับการตั้งค่า Supabase:
 -- 1. สร้างโปรเจค Supabase ใหม่

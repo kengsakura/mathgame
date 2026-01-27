@@ -17,7 +17,7 @@ export default function HowToUsePage() {
             </Button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">วิธีการใช้งาน</h1>
-              <p className="text-gray-600">คู่มือการใช้งานเกมคณิตศาสตร์</p>
+              <p className="text-gray-600">คู่มือการใช้งาน Qmath</p>
             </div>
           </div>
 
