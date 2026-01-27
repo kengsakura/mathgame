@@ -170,14 +170,62 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
     }
   }, [gameState.timeLeft, gameState.gameStarted, gameState.gameEnded, gameState.isTransitioning, goNextQuestion])
 
-  const startGame = () => {
+  const startGame = async () => {
     if (!quiz) return
 
-    const questions = generator.generateQuestions(quiz.total_questions, {
-      difficulty: quiz.difficulty,
-      maxConstantTerm: quiz.difficulty === 'easy' ? 20 : quiz.difficulty === 'medium' ? 30 : 40,
-      questionType: quiz.question_type
-    })
+    let questions: Question[] = []
+
+    try {
+      // 1. ลองดึงจาก Database ก่อน
+      const { data } = await supabase
+        .from('questions')
+        .select('*')
+        .eq('topic', quiz.question_type)
+        .eq('difficulty', quiz.difficulty)
+      
+      if (data && data.length > 0) {
+        // สุ่มลำดับ
+        const shuffled = data.sort(() => 0.5 - Math.random())
+        
+        // แปลงเป็น Question Object
+        const dbQuestions: Question[] = shuffled.map((q: any) => ({
+          expression: q.question_latex,
+          correctAnswer: q.correct_answer_latex,
+          choices: q.choices, // JSON array
+          // ใช้ optional properties
+        }))
+        
+        // ถ้าใน DB มีพอ ใส่ไปแทนเลย
+        // แต่ถ้ามีน้อยกว่าที่ต้องการ ตัวที่เหลือจะถูกเติมด้วย Generator
+        questions = dbQuestions
+      }
+    } catch (err) {
+      console.error('Error fetching questions from DB:', err)
+    }
+
+    // 2. ถ้ายังไม่ครบตามจำนวนที่ตั้งไว้ ให้สร้างเพิ่มด้วย Algorithm
+    if (questions.length < quiz.total_questions) {
+      const needed = quiz.total_questions - questions.length
+      const generated = generator.generateQuestions(needed, {
+        difficulty: quiz.difficulty,
+        maxConstantTerm: quiz.difficulty === 'easy' ? 20 : quiz.difficulty === 'medium' ? 30 : 40,
+        questionType: quiz.question_type
+      })
+      questions = [...questions, ...generated]
+    }
+    
+    // ตัดให้เหลือตามจำนวนข้อที่กำหนด (กรณี DB มีเยอะกว่า)
+    questions = questions.slice(0, quiz.total_questions)
+
+    // สุ่มลำดับตัวเลือกสำหรับคำถามจาก DB (เพราะใน DB อาจจะเรียงมา)
+    // แต่จริงๆ generator.generateQuestions สุ่ม choices มาแล้ว
+    // ส่วน DB เราเก็บ choices เป็น array ถ้าอยากสุ่มตำแหน่ง choice ก็ทำได้
+    // แต่ในที่นี้สมมติว่า choices ใน DB เตรียมมาแล้วหรือจะสุ่มเพิ่มก็ได้
+    // questions.forEach(q => {
+    //   if (!q.a && !q.b) { // เช็คว่าเป็นคำถามจาก DB
+    //      q.choices = q.choices.sort(() => 0.5 - Math.random())
+    //   }
+    // })
 
     setGameState({
       currentQuestion: 0,

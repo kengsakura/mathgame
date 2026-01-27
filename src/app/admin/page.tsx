@@ -61,27 +61,39 @@ export default function AdminPage() {
   }
 
   const createQuiz = async () => {
-    const { data } = await supabase
-      .from('quizzes')
-      .insert([
-        {
-          ...formData,
-          created_by: 'admin' // ในเวอร์ชันจริงควรมีระบบ authentication
-        }
-      ])
-      .select()
+    try {
+      const { data, error } = await supabase
+        .from('quizzes')
+        .insert([
+          {
+            ...formData,
+            created_by: 'admin' // ในเวอร์ชันจริงควรมีระบบ authentication
+          }
+        ])
+        .select()
 
-    if (data) {
-      setQuizzes([data[0], ...quizzes])
-      setShowCreateForm(false)
-      setFormData({
-        name: '',
-        difficulty: 'easy',
-        time_per_question: 20,
-        total_questions: 10,
-        question_type: 'polynomial',
-        passing_threshold: 60,
-      })
+      if (error) {
+        console.error('Error creating quiz:', error)
+        alert('เกิดข้อผิดพลาดในการสร้างชุดข้อสอบ: ' + error.message + '\n\n(ลองเช็คว่ารัน SQL อัปเดตตารางหรือยังครับ?)')
+        return
+      }
+
+      if (data) {
+        setQuizzes([data[0], ...quizzes])
+        setShowCreateForm(false)
+        setFormData({
+          name: '',
+          difficulty: 'easy',
+          time_per_question: 20,
+          total_questions: 10,
+          question_type: 'polynomial',
+          passing_threshold: 60,
+        })
+        alert('สร้างชุดข้อสอบเรียบร้อยแล้ว')
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err)
+      alert('เกิดข้อผิดพลาดที่ไม่คาดคิด')
     }
   }
 

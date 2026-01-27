@@ -2,9 +2,9 @@ export interface Question {
   expression: string
   correctAnswer: string
   choices: string[]
-  a: number
-  b: number
-  c: number
+  a?: number // เปลี่ยนเป็น optional
+  b?: number // เปลี่ยนเป็น optional
+  c?: number // เปลี่ยนเป็น optional
   // เพิ่ม method สำหรับเช็คคำตอบ
   checkAnswer?: (answer: string) => boolean
   // เพิ่มข้อมูลการแยกตัวประกอบ

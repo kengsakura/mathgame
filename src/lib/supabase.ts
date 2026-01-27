@@ -81,6 +81,35 @@ export type Database = {
           completed_at?: string
         }
       }
+      questions: {
+        Row: {
+          id: string
+          topic: string
+          difficulty: 'easy' | 'medium' | 'hard'
+          question_latex: string
+          correct_answer_latex: string
+          choices: string[] // Jsonb -> string[]
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          topic: string
+          difficulty: 'easy' | 'medium' | 'hard'
+          question_latex: string
+          correct_answer_latex: string
+          choices: string[]
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          topic?: string
+          difficulty?: 'easy' | 'medium' | 'hard'
+          question_latex?: string
+          correct_answer_latex?: string
+          choices?: string[]
+          created_at?: string
+        }
+      }
     }
   }
 }
