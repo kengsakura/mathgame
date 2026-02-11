@@ -16,7 +16,7 @@ export interface Question {
   }
 }
 
-export type QuestionType = 'power' | 'root' | 'polynomial' | 'equation' | 'derivative'
+export type QuestionType = 'power' | 'root' | 'polynomial' | 'equation' | 'derivative' | 'integral'
 
 export interface GeneratorOptions {
   difficulty: 'easy' | 'medium' | 'hard'
@@ -1391,12 +1391,196 @@ export class MathQuestionGenerator {
     }
   }
 
+  // ===== สำหรับการหาปริพันธ์ไม่จำกัดเขต =====
+  private generateIntegralQuestion(difficulty: 'easy' | 'medium' | 'hard'): Question {
+    // Helper: format term สำหรับ integrand (สัมประสิทธิ์เป็นจำนวนเต็ม)
+    const formatTerm = (coeff: number, power: number, isFirst: boolean): string => {
+      if (coeff === 0) return ''
+      let str = ''
+      if (!isFirst) {
+        str += coeff > 0 ? ' + ' : ' - '
+      } else if (coeff < 0) {
+        str += '-'
+      }
+      const absCoeff = Math.abs(coeff)
+      if (absCoeff !== 1 || power === 0) str += absCoeff
+      if (power !== 0) {
+        str += 'x'
+        if (power !== 1) str += `^{${power}}`
+      }
+      return str
+    }
+
+    // Helper: format term สำหรับผลลัพธ์ปริพันธ์ (อาจเป็นเศษส่วน)
+    const formatIntegralTerm = (num: number, den: number, power: number, isFirst: boolean): string => {
+      if (num === 0) return ''
+      const gcd = this.findGCD(Math.abs(num), Math.abs(den))
+      const rNum = num / gcd
+      const rDen = den / gcd
+      let str = ''
+      if (!isFirst) {
+        str += rNum > 0 ? ' + ' : ' - '
+      } else if (rNum < 0) {
+        str += '-'
+      }
+      const absNum = Math.abs(rNum)
+      if (rDen === 1) {
+        if (absNum !== 1 || power === 0) str += absNum
+        if (power !== 0) {
+          str += 'x'
+          if (power !== 1) str += `^{${power}}`
+        }
+      } else {
+        str += `\\frac{${absNum}}{${rDen}}`
+        if (power !== 0) {
+          str += 'x'
+          if (power !== 1) str += `^{${power}}`
+        }
+      }
+      return str
+    }
+
+    let terms: { c: number, p: number }[] = []
+
+    if (difficulty === 'easy') {
+      // ง่าย: 1-2 พจน์ สัมประสิทธิ์เป็นทวีคูณของ (n+1) เพื่อให้ผลลัพธ์เป็นจำนวนเต็ม
+      // ∫ ax^n dx = (a/(n+1))x^(n+1) + C → ถ้า a = k(n+1) จะได้ kx^(n+1)
+      const n = [1, 2, 3, 4][Math.floor(Math.random() * 4)]
+      const multiplier = Math.floor(Math.random() * 5) + 1 // 1-5
+      const sign = Math.random() < 0.2 ? -1 : 1
+      terms.push({ c: multiplier * (n + 1) * sign, p: n })
+
+      // เพิ่มพจน์ที่ 2 (ค่าคงที่ หรือ เชิงเส้น)
+      if (Math.random() > 0.3) {
+        if (Math.random() > 0.5 && n > 1) {
+          // พจน์เชิงเส้น: ใช้ทวีคูณของ 2 เพื่อให้หาร 2 ลงตัว
+          const b = (Math.floor(Math.random() * 5) + 1) * 2 * (Math.random() < 0.2 ? -1 : 1)
+          terms.push({ c: b, p: 1 })
+        } else {
+          // ค่าคงที่
+          const b = (Math.floor(Math.random() * 9) + 1) * (Math.random() < 0.2 ? -1 : 1)
+          terms.push({ c: b, p: 0 })
+        }
+      }
+    } else if (difficulty === 'medium') {
+      // ปานกลาง: 2-3 พจน์ อาจมีผลลัพธ์เป็นเศษส่วน
+      const n = [2, 3, 4][Math.floor(Math.random() * 3)]
+      const a = (Math.floor(Math.random() * 9) + 1) * (Math.random() < 0.3 ? -1 : 1)
+      terms.push({ c: a, p: n })
+
+      const m = Math.floor(Math.random() * (n - 1)) + 1
+      const b = (Math.floor(Math.random() * 9) + 1) * (Math.random() < 0.3 ? -1 : 1)
+      terms.push({ c: b, p: m })
+
+      if (Math.random() > 0.4) {
+        const d = (Math.floor(Math.random() * 9) + 1) * (Math.random() < 0.3 ? -1 : 1)
+        terms.push({ c: d, p: 0 })
+      }
+    } else {
+      // ยาก: 3-4 พจน์ กำลังสูง
+      const n = [3, 4, 5][Math.floor(Math.random() * 3)]
+      const a = (Math.floor(Math.random() * 9) + 2) * (Math.random() < 0.3 ? -1 : 1)
+      terms.push({ c: a, p: n })
+
+      const m = n - 1
+      const b = (Math.floor(Math.random() * 9) + 2) * (Math.random() < 0.3 ? -1 : 1)
+      terms.push({ c: b, p: m })
+
+      const k = Math.floor(Math.random() * Math.max(1, m - 1)) + 1
+      const cVal = (Math.floor(Math.random() * 9) + 1) * (Math.random() < 0.3 ? -1 : 1)
+      if (k !== m) terms.push({ c: cVal, p: k })
+
+      if (Math.random() > 0.3) {
+        const d = (Math.floor(Math.random() * 9) + 1) * (Math.random() < 0.3 ? -1 : 1)
+        terms.push({ c: d, p: 0 })
+      }
+    }
+
+    // สร้าง expression ของ integrand
+    let integrandStr = ''
+    terms.forEach((term, index) => {
+      integrandStr += formatTerm(term.c, term.p, index === 0)
+    })
+
+    // คำนวณปริพันธ์: ∫ cx^p dx = (c/(p+1))x^(p+1) + C
+    const integralResult = terms.map(term => ({
+      num: term.c,
+      den: term.p + 1,
+      power: term.p + 1
+    }))
+
+    // สร้างคำตอบ
+    let answerStr = ''
+    integralResult.forEach((term, index) => {
+      answerStr += formatIntegralTerm(term.num, term.den, term.power, index === 0)
+    })
+    answerStr += ' + C'
+
+    // สร้างตัวลวง
+    const distractors = new Set<string>()
+    while (distractors.size < 3) {
+      const type = Math.floor(Math.random() * 4)
+      let fakeResult: { num: number, den: number, power: number }[]
+
+      if (type === 0) {
+        // ผิด: ลืมเพิ่มกำลัง → (c/(p+1))x^p แทน x^(p+1)
+        fakeResult = terms.map(t => ({
+          num: t.c, den: t.p + 1, power: t.p
+        }))
+      } else if (type === 1) {
+        // ผิด: ลืมหารด้วย (p+1) → cx^(p+1)
+        fakeResult = terms.map(t => ({
+          num: t.c, den: 1, power: t.p + 1
+        }))
+      } else if (type === 2) {
+        // ผิด: หาอนุพันธ์แทน → c·p·x^(p-1)
+        fakeResult = terms
+          .filter(t => t.p !== 0)
+          .map(t => ({ num: t.c * t.p, den: 1, power: t.p - 1 }))
+        if (fakeResult.length === 0) fakeResult = [{ num: 1, den: 1, power: 1 }]
+      } else {
+        // ผิด: สัมประสิทธิ์คลาดเคลื่อน
+        fakeResult = integralResult.map(t => ({
+          num: t.num + (Math.random() > 0.5 ? t.den : -t.den),
+          den: t.den,
+          power: t.power
+        })).filter(t => t.num !== 0)
+        if (fakeResult.length === 0) fakeResult = [{ num: 1, den: 1, power: 1 }]
+      }
+
+      let fakeStr = ''
+      fakeResult.forEach((term, index) => {
+        fakeStr += formatIntegralTerm(term.num, term.den, term.power, index === 0)
+      })
+      if (fakeStr === '') fakeStr = '0'
+      fakeStr += ' + C'
+
+      if (fakeStr !== answerStr) {
+        distractors.add(fakeStr)
+      }
+    }
+
+    const needParens = terms.length > 1
+    const integralExpr = needParens
+      ? `\\int (${integrandStr})\\,dx`
+      : `\\int ${integrandStr}\\,dx`
+
+    return {
+      expression: `จงหาปริพันธ์ $${integralExpr}$`,
+      correctAnswer: `$${answerStr}$`,
+      choices: this.shuffleArray([`$${answerStr}$`, ...Array.from(distractors).map(d => `$${d}$`)]),
+      a: 0, b: 0, c: 0
+    }
+  }
+
   generateQuestion(options: GeneratorOptions): Question {
     const questionType = options.questionType || 'polynomial'
 
     switch (questionType) {
       case 'derivative':
         return this.generateDerivativeQuestion(options.difficulty)
+      case 'integral':
+        return this.generateIntegralQuestion(options.difficulty)
       case 'equation':
         return this.generateEquationQuestion(options.difficulty)
       case 'power':

@@ -14,9 +14,18 @@ interface Quiz {
   difficulty: 'easy' | 'medium' | 'hard'
   time_per_question: number
   total_questions: number
-  question_type: 'power' | 'root' | 'polynomial' | 'equation' | 'derivative'
+  question_type: string
   created_at: string
   passing_threshold: number
+}
+
+const DEFAULT_TOPIC_LABELS: Record<string, string> = {
+  derivative: 'อนุพันธ์ของฟังก์ชัน (f\'(x))',
+  integral: 'ปริพันธ์ไม่จำกัดเขต (∫f(x)dx)',
+  polynomial: 'แยกตัวประกอบพหุนาม',
+  equation: 'แก้สมการ (เชิงเส้น/กำลังสอง)',
+  power: 'เลขยกกำลัง (a^n)',
+  root: 'รากที่ n (√, ∛, ∜)',
 }
 
 export default function AdminPage() {
@@ -25,12 +34,13 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [availableTopics, setAvailableTopics] = useState<string[]>(Object.keys(DEFAULT_TOPIC_LABELS))
   const [formData, setFormData] = useState({
     name: '',
     difficulty: 'easy' as 'easy' | 'medium' | 'hard',
     time_per_question: 20,
     total_questions: 10,
-    question_type: 'polynomial' as 'power' | 'root' | 'polynomial' | 'equation' | 'derivative',
+    question_type: 'polynomial',
     passing_threshold: 60,
   })
 
@@ -46,8 +56,18 @@ export default function AdminPage() {
   useEffect(() => {
     if (isAuthenticated) {
       loadQuizzes()
+      loadTopics()
     }
   }, [isAuthenticated])
+
+  const loadTopics = async () => {
+    const { data } = await supabase.from('questions').select('topic')
+    if (data) {
+      const dbTopics = Array.from(new Set(data.map(r => r.topic)))
+      const merged = Array.from(new Set([...Object.keys(DEFAULT_TOPIC_LABELS), ...dbTopics]))
+      setAvailableTopics(merged)
+    }
+  }
 
   const loadQuizzes = async () => {
     const { data } = await supabase
@@ -123,14 +143,7 @@ export default function AdminPage() {
   }
 
   const getQuestionTypeText = (questionType: string) => {
-    switch (questionType) {
-      case 'polynomial': return 'แยกตัวประกอบ'
-      case 'equation': return 'แก้สมการ'
-      case 'power': return 'เลขยกกำลัง'
-      case 'root': return 'รากที่ n'
-      case 'derivative': return 'อนุพันธ์'
-      default: return questionType
-    }
+    return DEFAULT_TOPIC_LABELS[questionType]?.split(' (')[0] || questionType
   }
 
   const handleLogin = () => {
@@ -251,14 +264,12 @@ export default function AdminPage() {
                     <label className="block text-sm font-medium mb-2">ประเภทข้อสอบ</label>
                     <select
                       value={formData.question_type}
-                      onChange={(e) => setFormData({ ...formData, question_type: e.target.value as 'power' | 'root' | 'polynomial' | 'equation' | 'derivative' })}
+                      onChange={(e) => setFormData({ ...formData, question_type: e.target.value })}
                       className="w-full px-3 py-2 border rounded-lg"
                     >
-                      <option value="power">เลขยกกำลัง (a^n)</option>
-                      <option value="root">รากที่ n (√, ∛, ∜)</option>
-                      <option value="polynomial">แยกตัวประกอบพหุนาม</option>
-                      <option value="equation">แก้สมการ (เชิงเส้น/กำลังสอง)</option>
-                      <option value="derivative">อนุพันธ์ของฟังก์ชัน (f'(x))</option>
+                      {availableTopics.map((t) => (
+                        <option key={t} value={t}>{DEFAULT_TOPIC_LABELS[t] || t}</option>
+                      ))}
                     </select>
                   </div>
 

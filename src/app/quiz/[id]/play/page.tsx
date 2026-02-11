@@ -10,7 +10,18 @@ import { MathQuestionGenerator } from '@/lib/polynomial-generator'
 import type { Question } from '@/lib/polynomial-generator'
 import { Clock, User, Trophy } from 'lucide-react'
 import 'katex/dist/katex.min.css'
-import { InlineMath, BlockMath } from 'react-katex'
+import { InlineMath } from 'react-katex'
+
+function MathText({ children }: { children: string }) {
+  const parts = children.split(/\$([^$]+)\$/)
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 === 1 ? <InlineMath key={i} math={part} /> : part ? <span key={i}>{part}</span> : null
+      )}
+    </>
+  )
+}
 
 interface Quiz {
   id: string
@@ -18,7 +29,7 @@ interface Quiz {
   difficulty: 'easy' | 'medium' | 'hard'
   time_per_question: number
   total_questions: number
-  question_type: 'power' | 'root' | 'polynomial' | 'equation'
+  question_type: string
   passing_threshold: number
 }
 
@@ -204,12 +215,14 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
     }
 
     // 2. ถ้ายังไม่ครบตามจำนวนที่ตั้งไว้ ให้สร้างเพิ่มด้วย Algorithm
-    if (questions.length < quiz.total_questions) {
+    // เฉพาะ topic ที่ generator รองรับเท่านั้น (ไม่ใช่ custom topic)
+    const generatorTopics = ['power', 'root', 'polynomial', 'equation', 'derivative', 'integral']
+    if (questions.length < quiz.total_questions && generatorTopics.includes(quiz.question_type)) {
       const needed = quiz.total_questions - questions.length
       const generated = generator.generateQuestions(needed, {
         difficulty: quiz.difficulty,
         maxConstantTerm: quiz.difficulty === 'easy' ? 20 : quiz.difficulty === 'medium' ? 30 : 40,
-        questionType: quiz.question_type
+        questionType: quiz.question_type as any
       })
       questions = [...questions, ...generated]
     }
@@ -287,21 +300,11 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
 
   const restartQuiz = () => {
     if (!quiz) return
-    
-    // รีเซ็ต game state และเริ่มเกมใหม่
-    const newQuestions = Array.from({ length: quiz.total_questions }, () => 
-      generator.generateQuestion({
-        difficulty: quiz.difficulty,
-        maxConstantTerm: 20,
-        questionType: quiz.question_type as any
-      })
-    )
-    
     setGameState({
-      questions: newQuestions,
+      questions: [],
       currentQuestion: 0,
       score: 0,
-      answers: new Array(quiz.total_questions).fill(''),
+      answers: [],
       gameStarted: false,
       gameEnded: false,
       timeLeft: quiz.time_per_question,
@@ -340,6 +343,8 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
       case 'root': return 'คำนวณรากที่ n ต่อไปนี้'
       case 'polynomial': return 'แยกตัวประกอบของพหุนามต่อไปนี้'
       case 'equation': return 'แก้สมการต่อไปนี้'
+      case 'derivative': return 'จงหาอนุพันธ์ของฟังก์ชันต่อไปนี้'
+      case 'integral': return 'จงหาปริพันธ์ไม่จำกัดเขตต่อไปนี้'
       default: return 'แก้โจทย์ต่อไปนี้'
     }
   }
@@ -567,11 +572,15 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
             <CardContent>
               <div className="text-center">
                 <div className="text-4xl font-mono font-bold text-gray-900 mb-8 p-6 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                  {currentQ?.expression && (currentQ.expression.includes('\\frac') || currentQ.expression.includes('^{') || currentQ.expression.includes('\\')) ? (
-                    <InlineMath math={currentQ.expression} />
-                  ) : (
-                    currentQ?.expression || 'Loading...'
-                  )}
+                  {currentQ?.expression ? (
+                    currentQ.expression.includes('$') ? (
+                      <MathText>{currentQ.expression}</MathText>
+                    ) : currentQ.expression.includes('\\') ? (
+                      <InlineMath math={currentQ.expression} />
+                    ) : (
+                      currentQ.expression
+                    )
+                  ) : 'Loading...'}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {currentQ?.choices?.map((choice, index) => {
@@ -613,7 +622,9 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
                           }`}>
                             {String.fromCharCode(65 + index)}
                           </span>
-                          {choice.includes('\\frac') || choice.includes('^{') || choice.includes('\\') ? (
+                          {choice.includes('$') ? (
+                            <MathText>{choice}</MathText>
+                          ) : choice.includes('\\') ? (
                             <InlineMath math={choice} />
                           ) : (
                             choice
@@ -630,9 +641,15 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
                       : 'bg-gray-100 text-gray-800'
                   }`}>
                     <p className="font-medium">
-                      {gameState.lastAnswerCorrect 
-                        ? '🎉 ถูกต้อง!' 
-                        : `❌ ผิด! คำตอบที่ถูกคือ ${currentQ?.correctAnswer || 'N/A'}`}
+                      {gameState.lastAnswerCorrect
+                        ? '🎉 ถูกต้อง!'
+                        : <>❌ ผิด! คำตอบที่ถูกคือ {currentQ?.correctAnswer?.includes('$') ? (
+                            <MathText>{currentQ.correctAnswer}</MathText>
+                          ) : currentQ?.correctAnswer?.includes('\\') ? (
+                            <InlineMath math={currentQ.correctAnswer} />
+                          ) : (
+                            currentQ?.correctAnswer || 'N/A'
+                          )}</>}
                     </p>
                   </div>
                 )}
