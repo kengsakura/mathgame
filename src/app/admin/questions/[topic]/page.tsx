@@ -13,6 +13,11 @@ import { InlineMath } from 'react-katex'
 
 const TOPIC_LABELS: Record<string, string> = {
   derivative: 'อนุพันธ์ (Derivative)',
+  integral: 'ปริพันธ์ไม่จำกัดเขต (Integral)',
+  arithmetic_series: 'อนุกรมเลขคณิต (Arithmetic Series)',
+  arithmetic_sequence: 'ลำดับเลขคณิต (Arithmetic Sequence)',
+  geometric_sequence: 'ลำดับเรขาคณิต (Geometric Sequence)',
+  integer_add_sub: 'บวกลบจำนวนเต็ม',
   polynomial: 'แยกตัวประกอบ',
   equation: 'แก้สมการ',
   power: 'เลขยกกำลัง',

@@ -55,6 +55,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
   
   const [quiz, setQuiz] = useState<Quiz | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const scoreRef = useRef(0) // ref เพื่อกัน stale closure ตอนบันทึกคะแนน
   const [gameState, setGameState] = useState<GameState>({
     currentQuestion: 0,
     questions: [],
@@ -99,12 +100,8 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
       timerRef.current = null
     }
 
-    const finalScore = gameState.answers.reduce((sum, ans, i) => {
-      const q = gameState.questions[i]
-      if (!q) return sum
-      const correct = q.checkAnswer ? q.checkAnswer(ans) : ans === q.correctAnswer
-      return sum + (correct ? 1 : 0)
-    }, 0)
+    // ใช้ scoreRef แทน gameState.answers เพื่อกัน stale closure
+    const finalScore = scoreRef.current
 
     console.log('Game ended with score:', finalScore, 'out of', quiz.total_questions)
 
@@ -216,7 +213,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
 
     // 2. ถ้ายังไม่ครบตามจำนวนที่ตั้งไว้ ให้สร้างเพิ่มด้วย Algorithm
     // เฉพาะ topic ที่ generator รองรับเท่านั้น (ไม่ใช่ custom topic)
-    const generatorTopics = ['power', 'root', 'polynomial', 'equation', 'derivative', 'integral']
+    const generatorTopics = ['power', 'root', 'polynomial', 'equation', 'derivative', 'integral', 'arithmetic_series', 'arithmetic_sequence', 'geometric_sequence', 'integer_add_sub']
     if (questions.length < quiz.total_questions && generatorTopics.includes(quiz.question_type)) {
       const needed = quiz.total_questions - questions.length
       const generated = generator.generateQuestions(needed, {
@@ -240,6 +237,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
     //   }
     // })
 
+    scoreRef.current = 0
     setGameState({
       currentQuestion: 0,
       questions,
@@ -277,6 +275,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
     if (isCorrect) {
       newScore++
     }
+    scoreRef.current = newScore // อัพเดท ref ทันทีเพื่อกัน stale closure
 
     setGameState(prev => ({
       ...prev,
@@ -300,6 +299,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
 
   const restartQuiz = () => {
     if (!quiz) return
+    scoreRef.current = 0
     setGameState({
       questions: [],
       currentQuestion: 0,
@@ -345,6 +345,10 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
       case 'equation': return 'แก้สมการต่อไปนี้'
       case 'derivative': return 'จงหาอนุพันธ์ของฟังก์ชันต่อไปนี้'
       case 'integral': return 'จงหาปริพันธ์ไม่จำกัดเขตต่อไปนี้'
+      case 'arithmetic_series': return 'จงหาผลบวกอนุกรมเลขคณิตต่อไปนี้'
+      case 'arithmetic_sequence': return 'จงหาคำตอบเกี่ยวกับลำดับเลขคณิตต่อไปนี้'
+      case 'geometric_sequence': return 'จงหาคำตอบเกี่ยวกับลำดับเรขาคณิตต่อไปนี้'
+      case 'integer_add_sub': return 'จงคำนวณการบวกลบจำนวนเต็มต่อไปนี้'
       default: return 'แก้โจทย์ต่อไปนี้'
     }
   }
@@ -571,7 +575,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
             </CardHeader>
             <CardContent>
               <div className="text-center">
-                <div className="text-4xl font-mono font-bold text-gray-900 mb-8 p-6 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                <div className="text-2xl font-mono font-bold text-gray-900 mb-8 p-6 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
                   {currentQ?.expression ? (
                     currentQ.expression.includes('$') ? (
                       <MathText>{currentQ.expression}</MathText>

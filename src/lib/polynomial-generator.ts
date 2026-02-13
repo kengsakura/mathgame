@@ -16,7 +16,7 @@ export interface Question {
   }
 }
 
-export type QuestionType = 'power' | 'root' | 'polynomial' | 'equation' | 'derivative' | 'integral'
+export type QuestionType = 'power' | 'root' | 'polynomial' | 'equation' | 'derivative' | 'integral' | 'arithmetic_series' | 'arithmetic_sequence' | 'geometric_sequence' | 'integer_add_sub'
 
 export interface GeneratorOptions {
   difficulty: 'easy' | 'medium' | 'hard'
@@ -487,6 +487,77 @@ export class MathQuestionGenerator {
     }
   }
 
+  // ===== สำหรับการบวกลบจำนวนเต็ม =====
+  private generateIntegerAddSubQuestion(difficulty: 'easy' | 'medium' | 'hard'): Question {
+    const numOperands = Math.random() < 0.5 ? 2 : 3
+    let maxVal: number
+
+    if (difficulty === 'easy') {
+      maxVal = 100
+    } else if (difficulty === 'medium') {
+      maxVal = 200
+    } else {
+      maxVal = 500
+    }
+
+    // สุ่มจำนวนเต็ม (รวมลบ)
+    const randInt = () => {
+      const v = Math.floor(Math.random() * maxVal) + 1
+      return Math.random() < 0.4 ? -v : v
+    }
+
+    const nums: number[] = []
+    for (let i = 0; i < numOperands; i++) {
+      nums.push(randInt())
+    }
+
+    const correctAnswer = nums.reduce((a, b) => a + b, 0)
+
+    // สร้าง expression เช่น "(-5) + 12 - (-3)"
+    const parts: string[] = []
+    for (let i = 0; i < nums.length; i++) {
+      if (i === 0) {
+        parts.push(nums[i] < 0 ? `(${nums[i]})` : `${nums[i]}`)
+      } else {
+        if (nums[i] < 0) {
+          // สุ่มว่าจะแสดงเป็น "+ (-x)" หรือ "- x"
+          if (Math.random() < 0.5) {
+            parts.push(`+ (${nums[i]})`)
+          } else {
+            parts.push(`- ${Math.abs(nums[i])}`)
+          }
+        } else {
+          parts.push(`+ ${nums[i]}`)
+        }
+      }
+    }
+    const expression = parts.join(' ')
+
+    // สร้างตัวเลือกผิด
+    const distractors = new Set<string>()
+    const candidates = [
+      correctAnswer + 1, correctAnswer - 1,
+      correctAnswer + 2, correctAnswer - 2,
+      correctAnswer * -1,
+      nums.reduce((a, b) => a + Math.abs(b), 0), // บวกค่าสัมบูรณ์ทั้งหมด
+      correctAnswer + 10, correctAnswer - 10,
+    ]
+    for (const c of candidates) {
+      if (c !== correctAnswer && distractors.size < 3) distractors.add(c.toString())
+    }
+    while (distractors.size < 3) {
+      const r = correctAnswer + Math.floor(Math.random() * 20) - 10
+      if (r !== correctAnswer) distractors.add(r.toString())
+    }
+
+    return {
+      expression: `${expression} = ?`,
+      correctAnswer: correctAnswer.toString(),
+      choices: this.shuffleArray([correctAnswer.toString(), ...Array.from(distractors)]),
+      a: 0, b: 0, c: 0
+    }
+  }
+
   // ===== สำหรับการคำนวณเศษส่วน =====
   private generateFractionQuestion(difficulty: 'easy' | 'medium' | 'hard'): Question {
     if (difficulty === 'easy') {
@@ -709,8 +780,8 @@ export class MathQuestionGenerator {
       attempts++
 
       if (difficulty === 'easy') {
-        // ฐาน 2-5 กำลัง 2-4 (เลขยกกำลังแท้ๆ)
-        base = [2, 3, 4, 5][Math.floor(Math.random() * 4)]
+        // ฐาน 2-12 กำลัง 2-4 (เลขยกกำลังแท้ๆ)
+        base = Math.floor(Math.random() * 11) + 2 // 2-12
         exponent = [2, 3, 4][Math.floor(Math.random() * 3)]
         correctAnswer = Math.pow(base, exponent)
       } else if (difficulty === 'medium') {
@@ -1018,126 +1089,315 @@ export class MathQuestionGenerator {
     }
   }
 
-  // ===== สำหรับลำดับเลขคณิต =====
+  // ===== สำหรับลำดับเลขคณิต (หลายแบบ) =====
   private generateArithmeticSequenceQuestion(difficulty: 'easy' | 'medium' | 'hard'): Question {
+    // สุ่มประเภทโจทย์: 0=หา aₙ, 1=หา d, 2=หาพจน์ถัดไป, 3=หา a₁, 4=หา n
+    const subtype = difficulty === 'easy'
+      ? [0, 0, 1, 1, 2, 2, 3][Math.floor(Math.random() * 7)]
+      : [0, 1, 2, 3, 4][Math.floor(Math.random() * 5)]
+
     let a1: number, d: number, n: number
-    
     if (difficulty === 'easy') {
-      // ง่าย: พจน์แรกและส่วนต่างเป็นจำนวนเต็มบวกเล็กๆ
       a1 = Math.floor(Math.random() * 10) + 1 // 1-10
       d = Math.floor(Math.random() * 5) + 1   // 1-5
-      n = Math.floor(Math.random() * 8) + 3   // 3-10 (หาพจน์ที่ n)
+      n = Math.floor(Math.random() * 8) + 3   // 3-10
     } else if (difficulty === 'medium') {
-      // ปานกลาง: อาจมีส่วนต่างลบ หรือค่าใหญ่ขึ้น
-      a1 = Math.floor(Math.random() * 20) + 1 // 1-20
-      d = Math.floor(Math.random() * 10) - 5  // -5 ถึง 4
-      n = Math.floor(Math.random() * 12) + 5  // 5-16
+      a1 = Math.floor(Math.random() * 20) + 1
+      d = Math.floor(Math.random() * 10) - 5
+      n = Math.floor(Math.random() * 12) + 5
     } else {
-      // ยาก: ค่าใหญ่และซับซ้อน
-      a1 = Math.floor(Math.random() * 50) + 1  // 1-50
-      d = Math.floor(Math.random() * 20) - 10  // -10 ถึง 9
-      n = Math.floor(Math.random() * 15) + 10  // 10-24
-    }
-    
-    // คำนวณคำตอบ: an = a1 + (n-1)d
-    const correctAnswer = a1 + (n - 1) * d
-    
-    // สร้างตัวเลือกผิด
-    const distractors = new Set<string>()
-    const possibleDistractors = [
-      (a1 + n * d).toString(),           // ผิด: ใช้ nd แทน (n-1)d
-      (a1 + (n + 1) * d).toString(),     // ผิด: ใช้ n+1 แทน n-1
-      (a1 + (n - 2) * d).toString(),     // ผิด: ใช้ n-2 แทน n-1
-      (correctAnswer + d).toString(),     // ผิด: เพิ่มอีก d
-      (correctAnswer - d).toString(),     // ผิด: ลบ d
-      (a1 * n + d).toString(),           // ผิด: คูณแทนบวก
-      (correctAnswer + Math.floor(Math.random() * 10) + 1).toString()
-    ]
-    
-    for (const distractor of possibleDistractors) {
-      if (distractor !== correctAnswer.toString() && distractors.size < 3) {
-        distractors.add(distractor)
-      }
-    }
-    
-    while (distractors.size < 3) {
-      const randomDistractor = (correctAnswer + Math.floor(Math.random() * 20) - 10).toString()
-      if (randomDistractor !== correctAnswer.toString()) {
-        distractors.add(randomDistractor)
-      }
+      a1 = Math.floor(Math.random() * 50) + 1
+      d = Math.floor(Math.random() * 20) - 10
+      n = Math.floor(Math.random() * 15) + 10
     }
 
-    return {
-      expression: `ลำดับเลขคณิต: a_1 = ${a1}, d = ${d >= 0 ? '+' + d : d}. หา a_{${n}}`,
-      correctAnswer: correctAnswer.toString(),
-      choices: this.shuffleArray([correctAnswer.toString(), ...Array.from(distractors)]),
-      a: 0, b: 0, c: 0
+    // ป้องกัน d = 0
+    if (d === 0) d = 1
+
+    const an = a1 + (n - 1) * d
+    const distractors = new Set<string>()
+
+    if (subtype === 1) {
+      // === หา d จากลำดับ ===
+      // แสดงลำดับ 4 พจน์แรก
+      const seq = [a1, a1 + d, a1 + 2 * d, a1 + 3 * d]
+      const correctAnswer = d.toString()
+
+      const possibleDistractors = [
+        (d + 1).toString(), (d - 1).toString(), (d * 2).toString(),
+        (a1).toString(), (d + 2).toString(), (-d).toString(),
+        Math.abs(d - 2).toString()
+      ]
+      for (const dd of possibleDistractors) {
+        if (dd !== correctAnswer && distractors.size < 3) distractors.add(dd)
+      }
+      while (distractors.size < 3) {
+        const r = (d + Math.floor(Math.random() * 10) - 5).toString()
+        if (r !== correctAnswer) distractors.add(r)
+      }
+
+      return {
+        expression: `ลำดับเลขคณิต $${seq.join(', ')}, ...$ หา $d$`,
+        correctAnswer,
+        choices: this.shuffleArray([correctAnswer, ...Array.from(distractors)]),
+        a: 0, b: 0, c: 0
+      }
+    } else if (subtype === 2) {
+      // === หาพจน์ถัดไป จากลำดับ ===
+      const numTerms = Math.floor(Math.random() * 2) + 3 // แสดง 3-4 พจน์
+      const seq = Array.from({ length: numTerms }, (_, i) => a1 + i * d)
+      const nextTerm = a1 + numTerms * d
+      const correctAnswer = nextTerm.toString()
+
+      const possibleDistractors = [
+        (nextTerm + d).toString(), (nextTerm - d).toString(),
+        (nextTerm + 1).toString(), (nextTerm - 1).toString(),
+        (seq[seq.length - 1] * 2).toString(), (nextTerm + 2 * d).toString()
+      ]
+      for (const dd of possibleDistractors) {
+        if (dd !== correctAnswer && distractors.size < 3) distractors.add(dd)
+      }
+      while (distractors.size < 3) {
+        const r = (nextTerm + Math.floor(Math.random() * 10) - 5).toString()
+        if (r !== correctAnswer) distractors.add(r)
+      }
+
+      return {
+        expression: `ลำดับเลขคณิต $${seq.join(', ')}, ...$ พจน์ถัดไปคือข้อใด`,
+        correctAnswer,
+        choices: this.shuffleArray([correctAnswer, ...Array.from(distractors)]),
+        a: 0, b: 0, c: 0
+      }
+    } else if (subtype === 3) {
+      // === หา a₁ จาก aₙ กับ d ===
+      const correctAnswer = a1.toString()
+
+      const possibleDistractors = [
+        (a1 + d).toString(), (a1 - d).toString(),
+        (an - n * d).toString(), // ผิด: ใช้ nd แทน (n-1)d
+        (a1 + 1).toString(), (a1 - 1).toString(), (a1 * 2).toString()
+      ]
+      for (const dd of possibleDistractors) {
+        if (dd !== correctAnswer && distractors.size < 3) distractors.add(dd)
+      }
+      while (distractors.size < 3) {
+        const r = (a1 + Math.floor(Math.random() * 10) - 5).toString()
+        if (r !== correctAnswer) distractors.add(r)
+      }
+
+      return {
+        expression: `ลำดับเลขคณิต: $a_{${n}} = ${an}$, $d = ${d >= 0 ? '+' + d : d}$. หา $a_1$`,
+        correctAnswer,
+        choices: this.shuffleArray([correctAnswer, ...Array.from(distractors)]),
+        a: 0, b: 0, c: 0
+      }
+    } else if (subtype === 4) {
+      // === หา n จาก a₁, d, aₙ ===
+      const correctAnswer = n.toString()
+
+      const possibleDistractors = [
+        (n + 1).toString(), (n - 1).toString(), (n + 2).toString(),
+        (n - 2).toString(), (n * 2).toString(), Math.ceil(an / d).toString()
+      ]
+      for (const dd of possibleDistractors) {
+        if (dd !== correctAnswer && parseInt(dd) > 0 && distractors.size < 3) distractors.add(dd)
+      }
+      while (distractors.size < 3) {
+        const r = (n + Math.floor(Math.random() * 6) - 3).toString()
+        if (r !== correctAnswer && parseInt(r) > 0) distractors.add(r)
+      }
+
+      return {
+        expression: `ลำดับเลขคณิต: $a_1 = ${a1}$, $d = ${d >= 0 ? '+' + d : d}$, $a_n = ${an}$. หา $n$`,
+        correctAnswer,
+        choices: this.shuffleArray([correctAnswer, ...Array.from(distractors)]),
+        a: 0, b: 0, c: 0
+      }
+    } else {
+      // === subtype 0: หา aₙ (แบบเดิม) ===
+      const correctAnswer = an.toString()
+
+      const possibleDistractors = [
+        (a1 + n * d).toString(),
+        (a1 + (n + 1) * d).toString(),
+        (a1 + (n - 2) * d).toString(),
+        (an + d).toString(),
+        (an - d).toString(),
+        (a1 * n + d).toString()
+      ]
+      for (const dd of possibleDistractors) {
+        if (dd !== correctAnswer && distractors.size < 3) distractors.add(dd)
+      }
+      while (distractors.size < 3) {
+        const r = (an + Math.floor(Math.random() * 20) - 10).toString()
+        if (r !== correctAnswer) distractors.add(r)
+      }
+
+      return {
+        expression: `ลำดับเลขคณิต: $a_1 = ${a1}$, $d = ${d >= 0 ? '+' + d : d}$. หา $a_{${n}}$`,
+        correctAnswer,
+        choices: this.shuffleArray([correctAnswer, ...Array.from(distractors)]),
+        a: 0, b: 0, c: 0
+      }
     }
   }
 
   // ===== สำหรับลำดับเรขาคณิต =====
   private generateGeometricSequenceQuestion(difficulty: 'easy' | 'medium' | 'hard'): Question {
+    // สุ่มประเภทโจทย์: 0=หา aₙ, 1=หา r, 2=หาพจน์ถัดไป, 3=หา a₁, 4=หา n
+    const subtype = difficulty === 'easy'
+      ? [0, 0, 1, 1, 2, 2, 3][Math.floor(Math.random() * 7)]
+      : [0, 1, 2, 3, 4][Math.floor(Math.random() * 5)]
+
     let a1: number, r: number, n: number
-    
     if (difficulty === 'easy') {
-      // ง่าย: อัตราส่วนเป็น 2, 3, 4 เพื่อให้คำนวณง่าย
-      a1 = [1, 2, 3][Math.floor(Math.random() * 3)]
-      r = [2, 3][Math.floor(Math.random() * 2)]
+      a1 = Math.floor(Math.random() * 5) + 1 // 1-5
+      r = [2, 3, 4, 5][Math.floor(Math.random() * 4)]
       n = Math.floor(Math.random() * 4) + 3  // 3-6
     } else if (difficulty === 'medium') {
-      // ปานกลาง: อัตราส่วนหลากหลายขึ้น
-      a1 = [1, 2, 3, 4, 5][Math.floor(Math.random() * 5)]
-      r = [2, 3, 4, 5][Math.floor(Math.random() * 4)]
-      n = Math.floor(Math.random() * 5) + 4  // 4-8
+      a1 = Math.floor(Math.random() * 8) + 1
+      r = [2, 3, 4, 5, -2, -3][Math.floor(Math.random() * 6)]
+      n = Math.floor(Math.random() * 5) + 3
     } else {
-      // ยาก: อัตราส่วนเศษส่วนหรือลบ
-      a1 = [1, 2, 4, 8][Math.floor(Math.random() * 4)]
-      if (Math.random() < 0.3) {
-        // อัตราส่วนเศษส่วน
-        r = [0.5, 1.5][Math.floor(Math.random() * 2)]
-      } else {
-        r = [2, 3, -2][Math.floor(Math.random() * 3)]
-      }
-      n = Math.floor(Math.random() * 6) + 4  // 4-9
-    }
-    
-    // คำนวณคำตอบ: an = a1 × r^(n-1)
-    const correctAnswer = a1 * Math.pow(r, n - 1)
-    
-    // ตรวจสอบว่าคำตอบเป็นจำนวนเต็ม
-    if (!Number.isInteger(correctAnswer)) {
-      return this.generateGeometricSequenceQuestion(difficulty)
-    }
-    
-    // สร้างตัวเลือกผิด
-    const distractors = new Set<string>()
-    const possibleDistractors = [
-      (a1 * Math.pow(r, n)).toString(),      // ผิด: ใช้ r^n แทน r^(n-1)
-      (a1 * Math.pow(r, n - 2)).toString(),  // ผิด: ใช้ r^(n-2)
-      (a1 + Math.pow(r, n - 1)).toString(),  // ผิด: บวกแทนคูณ
-      (Math.pow(a1, n) * r).toString(),      // ผิด: ยกกำลัง a1
-      (correctAnswer * r).toString(),        // ผิด: คูณอีกครั้ง
-      (correctAnswer / r).toString(),        // ผิด: หาร r
-    ].filter(d => Number.isInteger(parseFloat(d)) && parseFloat(d) > 0)
-    
-    for (const distractor of possibleDistractors) {
-      if (distractor !== correctAnswer.toString() && distractors.size < 3) {
-        distractors.add(distractor)
-      }
-    }
-    
-    while (distractors.size < 3) {
-      const randomDistractor = Math.floor(correctAnswer * (0.5 + Math.random())).toString()
-      if (randomDistractor !== correctAnswer.toString() && parseInt(randomDistractor) > 0) {
-        distractors.add(randomDistractor)
-      }
+      a1 = Math.floor(Math.random() * 10) + 1
+      r = [2, 3, -2, -3, 4, 5][Math.floor(Math.random() * 6)]
+      n = Math.floor(Math.random() * 6) + 4
     }
 
-    return {
-      expression: `ลำดับเรขาคณิต: a_1 = ${a1}, r = ${r}. หา a_{${n}}`,
-      correctAnswer: correctAnswer.toString(),
-      choices: this.shuffleArray([correctAnswer.toString(), ...Array.from(distractors)]),
-      a: 0, b: 0, c: 0
+    const an = a1 * Math.pow(r, n - 1)
+    // ตรวจสอบว่าค่าไม่ใหญ่เกินไปและเป็นจำนวนเต็ม
+    if (!Number.isInteger(an) || Math.abs(an) > 10000) {
+      return this.generateGeometricSequenceQuestion(difficulty)
+    }
+
+    const distractors = new Set<string>()
+
+    if (subtype === 1) {
+      // === หา r จากลำดับ ===
+      const seq = [a1, a1 * r, a1 * r * r, a1 * r * r * r]
+      const correctAnswer = r.toString()
+
+      const possibleDistractors = [
+        (r + 1).toString(), (r - 1).toString(), (r * 2).toString(),
+        (a1).toString(), (-r).toString(), (r + 2).toString(),
+        Math.abs(r - 2).toString()
+      ]
+      for (const dd of possibleDistractors) {
+        if (dd !== correctAnswer && dd !== '0' && distractors.size < 3) distractors.add(dd)
+      }
+      while (distractors.size < 3) {
+        const rv = (r + Math.floor(Math.random() * 6) - 3).toString()
+        if (rv !== correctAnswer && rv !== '0') distractors.add(rv)
+      }
+
+      return {
+        expression: `ลำดับเรขาคณิต $${seq.join(', ')}, ...$ หา $r$`,
+        correctAnswer,
+        choices: this.shuffleArray([correctAnswer, ...Array.from(distractors)]),
+        a: 0, b: 0, c: 0
+      }
+    } else if (subtype === 2) {
+      // === หาพจน์ถัดไป จากลำดับ ===
+      const numTerms = Math.floor(Math.random() * 2) + 3 // 3-4 พจน์
+      const seq = Array.from({ length: numTerms }, (_, i) => a1 * Math.pow(r, i))
+      const nextTerm = a1 * Math.pow(r, numTerms)
+      if (!Number.isInteger(nextTerm) || Math.abs(nextTerm) > 10000) {
+        return this.generateGeometricSequenceQuestion(difficulty)
+      }
+      const correctAnswer = nextTerm.toString()
+
+      const possibleDistractors = [
+        (nextTerm * r).toString(), Math.round(nextTerm / r).toString(),
+        (nextTerm + r).toString(), (nextTerm - r).toString(),
+        (seq[seq.length - 1] + seq[seq.length - 2]).toString(),
+        (nextTerm * 2).toString()
+      ]
+      for (const dd of possibleDistractors) {
+        if (dd !== correctAnswer && Number.isInteger(parseFloat(dd)) && distractors.size < 3) distractors.add(dd)
+      }
+      while (distractors.size < 3) {
+        const rv = (nextTerm + Math.floor(Math.random() * 20) - 10).toString()
+        if (rv !== correctAnswer && parseInt(rv) !== 0) distractors.add(rv)
+      }
+
+      return {
+        expression: `ลำดับเรขาคณิต $${seq.join(', ')}, ...$ พจน์ถัดไปคือข้อใด`,
+        correctAnswer,
+        choices: this.shuffleArray([correctAnswer, ...Array.from(distractors)]),
+        a: 0, b: 0, c: 0
+      }
+    } else if (subtype === 3) {
+      // === หา a₁ จาก aₙ กับ r ===
+      const correctAnswer = a1.toString()
+
+      const possibleDistractors = [
+        (a1 * r).toString(), Math.round(a1 / r).toString(),
+        Math.round(an / Math.pow(r, n)).toString(), // ผิด: ใช้ r^n แทน r^(n-1)
+        (a1 + 1).toString(), (a1 - 1).toString(), (a1 * 2).toString()
+      ]
+      for (const dd of possibleDistractors) {
+        if (dd !== correctAnswer && parseInt(dd) > 0 && distractors.size < 3) distractors.add(dd)
+      }
+      while (distractors.size < 3) {
+        const rv = (a1 + Math.floor(Math.random() * 10) - 5).toString()
+        if (rv !== correctAnswer && parseInt(rv) > 0) distractors.add(rv)
+      }
+
+      return {
+        expression: `ลำดับเรขาคณิต: $a_{${n}} = ${an}$, $r = ${r}$. หา $a_1$`,
+        correctAnswer,
+        choices: this.shuffleArray([correctAnswer, ...Array.from(distractors)]),
+        a: 0, b: 0, c: 0
+      }
+    } else if (subtype === 4) {
+      // === หา n จาก a₁, r, aₙ ===
+      const correctAnswer = n.toString()
+
+      const possibleDistractors = [
+        (n + 1).toString(), (n - 1).toString(), (n + 2).toString(),
+        (n - 2).toString(), (n * 2).toString(), (n + 3).toString()
+      ]
+      for (const dd of possibleDistractors) {
+        if (dd !== correctAnswer && parseInt(dd) > 0 && distractors.size < 3) distractors.add(dd)
+      }
+      while (distractors.size < 3) {
+        const rv = (n + Math.floor(Math.random() * 6) - 3).toString()
+        if (rv !== correctAnswer && parseInt(rv) > 0) distractors.add(rv)
+      }
+
+      return {
+        expression: `ลำดับเรขาคณิต: $a_1 = ${a1}$, $r = ${r}$, $a_n = ${an}$. หา $n$`,
+        correctAnswer,
+        choices: this.shuffleArray([correctAnswer, ...Array.from(distractors)]),
+        a: 0, b: 0, c: 0
+      }
+    } else {
+      // === subtype 0: หา aₙ ===
+      const correctAnswer = an.toString()
+
+      const possibleDistractors = [
+        (a1 * Math.pow(r, n)).toString(),     // ผิด: ใช้ r^n แทน r^(n-1)
+        (a1 * Math.pow(r, n - 2)).toString(), // ผิด: ใช้ r^(n-2)
+        (a1 + Math.pow(r, n - 1)).toString(), // ผิด: บวกแทนคูณ
+        (an * r).toString(),
+        Math.round(an / r).toString(),
+      ]
+      for (const dd of possibleDistractors) {
+        if (dd !== correctAnswer && Number.isInteger(parseFloat(dd)) && parseFloat(dd) > 0 && distractors.size < 3) {
+          distractors.add(dd)
+        }
+      }
+      while (distractors.size < 3) {
+        const rv = (an + Math.floor(Math.random() * 20) - 10).toString()
+        if (rv !== correctAnswer && parseInt(rv) > 0) distractors.add(rv)
+      }
+
+      return {
+        expression: `ลำดับเรขาคณิต: $a_1 = ${a1}$, $r = ${r}$. หา $a_{${n}}$`,
+        correctAnswer,
+        choices: this.shuffleArray([correctAnswer, ...Array.from(distractors)]),
+        a: 0, b: 0, c: 0
+      }
     }
   }
 
@@ -1192,7 +1452,7 @@ export class MathQuestionGenerator {
     }
 
     return {
-      expression: `อนุกรมเลขคณิต: a_1 = ${a1}, d = ${d >= 0 ? '+' + d : d}, n = ${n}. หา S_{${n}}`,
+      expression: `อนุกรมเลขคณิต: $a_1 = ${a1}$, $d = ${d >= 0 ? '+' + d : d}$, $n = ${n}$. หา $S_{${n}}$`,
       correctAnswer: correctAnswer.toString(),
       choices: this.shuffleArray([correctAnswer.toString(), ...Array.from(distractors)]),
       a: 0, b: 0, c: 0
@@ -1581,6 +1841,14 @@ export class MathQuestionGenerator {
         return this.generateDerivativeQuestion(options.difficulty)
       case 'integral':
         return this.generateIntegralQuestion(options.difficulty)
+      case 'arithmetic_series':
+        return this.generateArithmeticSeriesQuestion(options.difficulty)
+      case 'arithmetic_sequence':
+        return this.generateArithmeticSequenceQuestion(options.difficulty)
+      case 'geometric_sequence':
+        return this.generateGeometricSequenceQuestion(options.difficulty)
+      case 'integer_add_sub':
+        return this.generateIntegerAddSubQuestion(options.difficulty)
       case 'equation':
         return this.generateEquationQuestion(options.difficulty)
       case 'power':

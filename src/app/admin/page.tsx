@@ -22,8 +22,12 @@ interface Quiz {
 const DEFAULT_TOPIC_LABELS: Record<string, string> = {
   derivative: 'อนุพันธ์ของฟังก์ชัน (f\'(x))',
   integral: 'ปริพันธ์ไม่จำกัดเขต (∫f(x)dx)',
+  arithmetic_series: 'อนุกรมเลขคณิต (Sn)',
+  arithmetic_sequence: 'ลำดับเลขคณิต (aₙ, d)',
   polynomial: 'แยกตัวประกอบพหุนาม',
   equation: 'แก้สมการ (เชิงเส้น/กำลังสอง)',
+  geometric_sequence: 'ลำดับเรขาคณิต (aₙ, r)',
+  integer_add_sub: 'บวกลบจำนวนเต็ม (+, −)',
   power: 'เลขยกกำลัง (a^n)',
   root: 'รากที่ n (√, ∛, ∜)',
 }
