@@ -107,6 +107,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
 
     setGameState(prev => ({
       ...prev,
+      score: finalScore, // sync คะแนนที่แสดงกับที่บันทึก
       gameEnded: true,
       timeLeft: 0
     }))
@@ -263,28 +264,26 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
       timerRef.current = null
     }
 
-    const newAnswers = [...gameState.answers]
-    newAnswers[gameState.currentQuestion] = answer
+    const currentQ = gameState.questions[gameState.currentQuestion]
+    const isCorrect = currentQ.checkAnswer ?
+      currentQ.checkAnswer(answer) :
+      answer === currentQ.correctAnswer
 
-    const currentQuestion = gameState.questions[gameState.currentQuestion]
-    const isCorrect = currentQuestion.checkAnswer ?
-      currentQuestion.checkAnswer(answer) :
-      answer === currentQuestion.correctAnswer
-
-    let newScore = gameState.score
-    if (isCorrect) {
-      newScore++
-    }
-    scoreRef.current = newScore // อัพเดท ref ทันทีเพื่อกัน stale closure
-
-    setGameState(prev => ({
-      ...prev,
-      answers: newAnswers,
-      score: newScore,
-      showResult: true,
-      lastAnswerCorrect: isCorrect,
-      isTransitioning: true // ตั้ง flag เพื่อป้องกันการ transition ซ้ำ
-    }))
+    // ใช้ functional update เพื่อใช้ prev.score (ค่าล่าสุดจริงๆ) แทน gameState.score (อาจ stale)
+    setGameState(prev => {
+      const newAnswers = [...prev.answers]
+      newAnswers[prev.currentQuestion] = answer
+      const newScore = prev.score + (isCorrect ? 1 : 0)
+      scoreRef.current = newScore
+      return {
+        ...prev,
+        answers: newAnswers,
+        score: newScore,
+        showResult: true,
+        lastAnswerCorrect: isCorrect,
+        isTransitioning: true
+      }
+    })
 
     setTimeout(() => {
       setGameState(prev => ({
