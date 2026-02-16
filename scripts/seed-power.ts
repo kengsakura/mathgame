@@ -82,6 +82,11 @@ function makeDistractors(correctStr: string, base: number, exp: number): string[
 interface PQ { base: number, exp: number, ansStr: string }
 
 async function seed() {
+  // ลบข้อเก่าก่อน
+  const { error: delErr } = await supabase.from('questions').delete().eq('topic', 'power')
+  if (delErr) { console.error('Delete error:', delErr.message); process.exit(1) }
+  console.log('ลบข้อเก่าแล้ว')
+
   const allQuestions: PQ[] = []
 
   // กำลัง 0: n^0 = 1 (ฐาน 2-20)
@@ -121,7 +126,7 @@ async function seed() {
     return {
       topic: 'power',
       difficulty: 'easy' as const,
-      question_latex: `${q.base}^{${q.exp}} = ?`,
+      question_latex: `$${q.base}^{${q.exp}} = ?$`,
       correct_answer_latex: q.ansStr,
       choices,
     }

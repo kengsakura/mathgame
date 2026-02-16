@@ -18,6 +18,8 @@ const TOPIC_LABELS: Record<string, string> = {
   arithmetic_sequence: 'ลำดับเลขคณิต (Arithmetic Sequence)',
   geometric_sequence: 'ลำดับเรขาคณิต (Geometric Sequence)',
   integer_add_sub: 'บวกลบจำนวนเต็ม',
+  integer_multiply: 'คูณจำนวนเต็ม',
+  exponential: 'สมการเลขชี้กำลัง',
   polynomial: 'แยกตัวประกอบ',
   equation: 'แก้สมการ',
   power: 'เลขยกกำลัง',

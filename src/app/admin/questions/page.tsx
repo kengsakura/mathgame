@@ -16,6 +16,8 @@ const DEFAULT_TOPICS: Record<string, string> = {
   equation: 'แก้สมการ',
   geometric_sequence: 'ลำดับเรขาคณิต (Geometric Sequence)',
   integer_add_sub: 'บวกลบจำนวนเต็ม',
+  integer_multiply: 'คูณจำนวนเต็ม',
+  exponential: 'สมการเลขชี้กำลัง',
   power: 'เลขยกกำลัง',
   root: 'รากที่ n',
 }

@@ -28,6 +28,8 @@ const DEFAULT_TOPIC_LABELS: Record<string, string> = {
   equation: 'แก้สมการ (เชิงเส้น/กำลังสอง)',
   geometric_sequence: 'ลำดับเรขาคณิต (aₙ, r)',
   integer_add_sub: 'บวกลบจำนวนเต็ม (+, −)',
+  integer_multiply: 'คูณจำนวนเต็ม (×)',
+  exponential: 'สมการเลขชี้กำลัง (b^x = n)',
   power: 'เลขยกกำลัง (a^n)',
   root: 'รากที่ n (√, ∛, ∜)',
 }

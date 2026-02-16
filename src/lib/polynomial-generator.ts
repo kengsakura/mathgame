@@ -16,7 +16,7 @@ export interface Question {
   }
 }
 
-export type QuestionType = 'power' | 'root' | 'polynomial' | 'equation' | 'derivative' | 'integral' | 'arithmetic_series' | 'arithmetic_sequence' | 'geometric_sequence' | 'integer_add_sub'
+export type QuestionType = 'power' | 'root' | 'polynomial' | 'equation' | 'derivative' | 'integral' | 'arithmetic_series' | 'arithmetic_sequence' | 'geometric_sequence' | 'integer_add_sub' | 'integer_multiply' | 'exponential'
 
 export interface GeneratorOptions {
   difficulty: 'easy' | 'medium' | 'hard'
@@ -554,6 +554,148 @@ export class MathQuestionGenerator {
       expression: `${expression} = ?`,
       correctAnswer: correctAnswer.toString(),
       choices: this.shuffleArray([correctAnswer.toString(), ...Array.from(distractors)]),
+      a: 0, b: 0, c: 0
+    }
+  }
+
+  // ===== สำหรับการคูณจำนวนเต็ม =====
+  private generateIntegerMultiplyQuestion(difficulty: 'easy' | 'medium' | 'hard'): Question {
+    let a: number, b: number
+
+    if (difficulty === 'easy') {
+      a = Math.floor(Math.random() * 12) + 1
+      b = Math.floor(Math.random() * 99) + 1
+    } else if (difficulty === 'medium') {
+      a = Math.floor(Math.random() * 20) + 1
+      b = Math.floor(Math.random() * 99) + 1
+    } else {
+      a = Math.floor(Math.random() * 30) + 1
+      b = Math.floor(Math.random() * 99) + 1
+    }
+
+    // สุ่มเครื่องหมาย
+    if (Math.random() < 0.35) a = -a
+    if (Math.random() < 0.35) b = -b
+
+    const correctAnswer = a * b
+    // จำกัดผลลัพธ์ไม่เกิน 1000
+    if (Math.abs(correctAnswer) > 1000) {
+      return this.generateIntegerMultiplyQuestion(difficulty)
+    }
+
+    // สร้าง expression
+    const aStr = a < 0 ? `(${a})` : `${a}`
+    const bStr = b < 0 ? `(${b})` : `${b}`
+    const expression = `${aStr} \\times ${bStr}`
+
+    // สร้างตัวเลือกผิด
+    const distractors = new Set<string>()
+    const candidates = [
+      correctAnswer + a, correctAnswer - a,
+      correctAnswer + b, correctAnswer - b,
+      -correctAnswer,
+      a * b + 1, a * b - 1,
+      a + b, a - b,
+    ]
+    for (const c of candidates) {
+      if (c !== correctAnswer && distractors.size < 3) distractors.add(c.toString())
+    }
+    while (distractors.size < 3) {
+      const r = correctAnswer + Math.floor(Math.random() * 20) - 10
+      if (r !== correctAnswer) distractors.add(r.toString())
+    }
+
+    return {
+      expression: `$${expression} = ?$`,
+      correctAnswer: correctAnswer.toString(),
+      choices: this.shuffleArray([correctAnswer.toString(), ...Array.from(distractors)]),
+      a: 0, b: 0, c: 0
+    }
+  }
+
+  // ===== สมการเลขชี้กำลัง (Exponential Equations) =====
+  private generateExponentialQuestion(difficulty: 'easy' | 'medium' | 'hard'): Question {
+    // ฐาน > 1 เท่านั้น, คำตอบเป็นจำนวนเต็ม, ผลยกกำลังไม่เกิน 1000
+    const bases = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+    // สุ่ม subtype
+    const subtypes = ['simple', 'x_plus_c', 'x_minus_c', 'cx', 'cx_plus_d']
+    const subtype = subtypes[Math.floor(Math.random() * subtypes.length)]
+
+    const base = bases[Math.floor(Math.random() * bases.length)]
+
+    // หา exponent สูงสุดที่ base^e ≤ 1000
+    let maxExp = 1
+    while (Math.pow(base, maxExp + 1) <= 1000) maxExp++
+
+    let expression: string
+    let answer: number
+
+    switch (subtype) {
+      case 'simple': {
+        // b^x = b^e → x = e
+        const e = Math.floor(Math.random() * maxExp) + 1
+        const result = Math.pow(base, e)
+        expression = `$${base}^{x} = ${result}$`
+        answer = e
+        break
+      }
+      case 'x_plus_c': {
+        // b^{x+c} = b^e → x = e - c
+        const c = Math.floor(Math.random() * 3) + 1
+        const e = c + 1 + Math.floor(Math.random() * Math.max(1, maxExp - c))
+        if (Math.pow(base, e) > 1000) { return this.generateExponentialQuestion(difficulty) }
+        const result = Math.pow(base, e)
+        answer = e - c
+        expression = `$${base}^{x+${c}} = ${result}$`
+        break
+      }
+      case 'x_minus_c': {
+        // b^{x-c} = b^e → x = e + c
+        const c = Math.floor(Math.random() * 3) + 1
+        const e = Math.floor(Math.random() * maxExp) + 1
+        if (Math.pow(base, e) > 1000) { return this.generateExponentialQuestion(difficulty) }
+        const result = Math.pow(base, e)
+        answer = e + c
+        expression = `$${base}^{x-${c}} = ${result}$`
+        break
+      }
+      case 'cx': {
+        // b^{cx} = b^e → x = e/c, ต้องหารลงตัว
+        const c = Math.random() < 0.5 ? 2 : 3
+        const x = Math.floor(Math.random() * Math.max(1, Math.floor(maxExp / c))) + 1
+        const e = c * x
+        if (Math.pow(base, e) > 1000) { return this.generateExponentialQuestion(difficulty) }
+        const result = Math.pow(base, e)
+        answer = x
+        expression = `$${base}^{${c}x} = ${result}$`
+        break
+      }
+      case 'cx_plus_d': {
+        // b^{cx+d} = b^e → x = (e-d)/c
+        const c = Math.random() < 0.5 ? 2 : 3
+        const d = Math.floor(Math.random() * 2) + 1
+        const x = Math.floor(Math.random() * Math.max(1, Math.floor((maxExp - d) / c))) + 1
+        const e = c * x + d
+        if (e < 1 || Math.pow(base, e) > 1000) { return this.generateExponentialQuestion(difficulty) }
+        const result = Math.pow(base, e)
+        answer = x
+        expression = `$${base}^{${c}x+${d}} = ${result}$`
+        break
+      }
+      default: {
+        const e = Math.floor(Math.random() * maxExp) + 1
+        const result = Math.pow(base, e)
+        expression = `$${base}^{x} = ${result}$`
+        answer = e
+      }
+    }
+
+    // ไม่มี choices → เติมคำตอบ (text input)
+    return {
+      expression,
+      correctAnswer: answer.toString(),
+      choices: [],
       a: 0, b: 0, c: 0
     }
   }
@@ -1849,6 +1991,10 @@ export class MathQuestionGenerator {
         return this.generateGeometricSequenceQuestion(options.difficulty)
       case 'integer_add_sub':
         return this.generateIntegerAddSubQuestion(options.difficulty)
+      case 'integer_multiply':
+        return this.generateIntegerMultiplyQuestion(options.difficulty)
+      case 'exponential':
+        return this.generateExponentialQuestion(options.difficulty)
       case 'equation':
         return this.generateEquationQuestion(options.difficulty)
       case 'power':

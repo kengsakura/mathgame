@@ -8,6 +8,7 @@ import { SigmaSpinner } from '@/components/ui/sigma-spinner'
 import { supabase } from '@/lib/supabase'
 import { MathQuestionGenerator } from '@/lib/polynomial-generator'
 import type { Question } from '@/lib/polynomial-generator'
+import { Input } from '@/components/ui/input'
 import { Clock, User, Trophy } from 'lucide-react'
 import 'katex/dist/katex.min.css'
 import { InlineMath } from 'react-katex'
@@ -214,7 +215,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
 
     // 2. ถ้ายังไม่ครบตามจำนวนที่ตั้งไว้ ให้สร้างเพิ่มด้วย Algorithm
     // เฉพาะ topic ที่ generator รองรับเท่านั้น (ไม่ใช่ custom topic)
-    const generatorTopics = ['power', 'root', 'polynomial', 'equation', 'derivative', 'integral', 'arithmetic_series', 'arithmetic_sequence', 'geometric_sequence', 'integer_add_sub']
+    const generatorTopics = ['power', 'root', 'polynomial', 'equation', 'derivative', 'integral', 'arithmetic_series', 'arithmetic_sequence', 'geometric_sequence', 'integer_add_sub', 'integer_multiply', 'exponential']
     if (questions.length < quiz.total_questions && generatorTopics.includes(quiz.question_type)) {
       const needed = quiz.total_questions - questions.length
       const generated = generator.generateQuestions(needed, {
@@ -348,6 +349,8 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
       case 'arithmetic_sequence': return 'จงหาคำตอบเกี่ยวกับลำดับเลขคณิตต่อไปนี้'
       case 'geometric_sequence': return 'จงหาคำตอบเกี่ยวกับลำดับเรขาคณิตต่อไปนี้'
       case 'integer_add_sub': return 'จงคำนวณการบวกลบจำนวนเต็มต่อไปนี้'
+      case 'integer_multiply': return 'จงคำนวณการคูณจำนวนเต็มต่อไปนี้'
+      case 'exponential': return 'จงแก้สมการเลขชี้กำลังต่อไปนี้'
       default: return 'แก้โจทย์ต่อไปนี้'
     }
   }
@@ -585,13 +588,14 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
                     )
                   ) : 'Loading...'}
                 </div>
+                {currentQ?.choices && currentQ.choices.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {currentQ?.choices?.map((choice, index) => {
+                  {currentQ.choices.map((choice, index) => {
                     const isSelected = gameState.answers[gameState.currentQuestion] === choice
                     const isCorrect = choice === currentQ.correctAnswer
-                    
+
                     let buttonClass = "h-16 text-lg font-mono p-4 transition-all duration-300"
-                    
+
                     if (gameState.showResult && isSelected) {
                       if (gameState.lastAnswerCorrect) {
                         buttonClass += " bg-orange-500 text-white border-orange-600 shadow-lg"
@@ -637,6 +641,36 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
                     )
                   })}
                 </div>
+                ) : (
+                <div className="max-w-sm mx-auto">
+                  <form onSubmit={(e) => {
+                    e.preventDefault()
+                    const input = (e.currentTarget.elements.namedItem('answer') as HTMLInputElement)
+                    if (input.value.trim() && !gameState.showResult) {
+                      selectAnswer(input.value.trim())
+                    }
+                  }}>
+                    <div className="flex gap-3">
+                      <Input
+                        name="answer"
+                        type="number"
+                        placeholder="พิมพ์คำตอบ (ตัวเลข)"
+                        className="h-14 text-xl text-center font-mono"
+                        autoFocus
+                        disabled={gameState.showResult}
+                        autoComplete="off"
+                      />
+                      <Button
+                        type="submit"
+                        className="h-14 px-6 text-lg"
+                        disabled={gameState.showResult}
+                      >
+                        ตอบ
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+                )}
                 {gameState.showResult && (
                   <div className={`mt-6 p-4 rounded-lg ${
                     gameState.lastAnswerCorrect 
