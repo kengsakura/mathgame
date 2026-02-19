@@ -21,6 +21,7 @@ const TOPIC_LABELS: Record<string, string> = {
   integer_multiply: 'คูณจำนวนเต็ม',
   exponential: 'สมการเลขชี้กำลัง',
   sequence_d_r: 'หา d, r ของลำดับ',
+  stat_mode_range: 'ฐานนิยม & พิสัย',
   polynomial: 'แยกตัวประกอบ',
   equation: 'แก้สมการ',
   power: 'เลขยกกำลัง',

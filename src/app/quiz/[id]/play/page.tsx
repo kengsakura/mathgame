@@ -217,7 +217,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
 
     // 2. ถ้ายังไม่ครบตามจำนวนที่ตั้งไว้ ให้สร้างเพิ่มด้วย Algorithm
     // เฉพาะ topic ที่ generator รองรับเท่านั้น (ไม่ใช่ custom topic)
-    const generatorTopics = ['power', 'root', 'polynomial', 'equation', 'derivative', 'integral', 'arithmetic_series', 'arithmetic_sequence', 'geometric_sequence', 'integer_add_sub', 'integer_multiply', 'exponential', 'sequence_d_r']
+    const generatorTopics = ['power', 'root', 'polynomial', 'equation', 'derivative', 'integral', 'arithmetic_series', 'arithmetic_sequence', 'geometric_sequence', 'integer_add_sub', 'integer_multiply', 'exponential', 'sequence_d_r', 'stat_mode_range']
     if (questions.length < quiz.total_questions && generatorTopics.includes(quiz.question_type)) {
       const needed = quiz.total_questions - questions.length
       const generated = generator.generateQuestions(needed, {
@@ -354,6 +354,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
       case 'integer_multiply': return 'จงคำนวณการคูณจำนวนเต็มต่อไปนี้'
       case 'exponential': return 'จงแก้สมการเลขชี้กำลังต่อไปนี้'
       case 'sequence_d_r': return 'จงหาค่า d หรือ r ของลำดับต่อไปนี้'
+      case 'stat_mode_range': return 'จงหาฐานนิยมหรือพิสัยของข้อมูลต่อไปนี้'
       default: return 'แก้โจทย์ต่อไปนี้'
     }
   }

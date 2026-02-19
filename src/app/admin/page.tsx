@@ -31,6 +31,7 @@ const DEFAULT_TOPIC_LABELS: Record<string, string> = {
   integer_multiply: 'คูณจำนวนเต็ม (×)',
   exponential: 'สมการเลขชี้กำลัง (b^x = n)',
   sequence_d_r: 'หา d, r ของลำดับ',
+  stat_mode_range: 'ฐานนิยม & พิสัย',
   power: 'เลขยกกำลัง (a^n)',
   root: 'รากที่ n (√, ∛, ∜)',
 }

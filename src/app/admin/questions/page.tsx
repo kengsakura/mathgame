@@ -19,6 +19,7 @@ const DEFAULT_TOPICS: Record<string, string> = {
   integer_multiply: 'คูณจำนวนเต็ม',
   exponential: 'สมการเลขชี้กำลัง',
   sequence_d_r: 'หา d, r ของลำดับ',
+  stat_mode_range: 'ฐานนิยม & พิสัย',
   power: 'เลขยกกำลัง',
   root: 'รากที่ n',
 }

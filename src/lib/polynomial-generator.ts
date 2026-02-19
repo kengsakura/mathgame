@@ -16,7 +16,7 @@ export interface Question {
   }
 }
 
-export type QuestionType = 'power' | 'root' | 'polynomial' | 'equation' | 'derivative' | 'integral' | 'arithmetic_series' | 'arithmetic_sequence' | 'geometric_sequence' | 'integer_add_sub' | 'integer_multiply' | 'exponential' | 'sequence_d_r'
+export type QuestionType = 'power' | 'root' | 'polynomial' | 'equation' | 'derivative' | 'integral' | 'arithmetic_series' | 'arithmetic_sequence' | 'geometric_sequence' | 'integer_add_sub' | 'integer_multiply' | 'exponential' | 'sequence_d_r' | 'stat_mode_range'
 
 export interface GeneratorOptions {
   difficulty: 'easy' | 'medium' | 'hard'
@@ -746,6 +746,62 @@ export class MathQuestionGenerator {
       return {
         expression: `ลำดับ ${termStr}, ... หา $r$`,
         correctAnswer: r.toString(),
+        choices: [],
+        a: 0, b: 0, c: 0
+      }
+    }
+  }
+
+  // ===== หาฐานนิยม (Mode) หรือ พิสัย (Range) =====
+  private generateStatModeRangeQuestion(difficulty: 'easy' | 'medium' | 'hard'): Question {
+    const type = Math.random() < 0.5 ? 'mode' : 'range'
+    const count = 17 + Math.floor(Math.random() * 4) // 17-20 ตัว
+
+    // สร้างตัวเลข 1-30
+    const numbers: number[] = []
+
+    if (type === 'mode') {
+      // สร้างให้มี mode ตัวเดียว
+      const modeValue = Math.floor(Math.random() * 30) + 1
+      const modeFreq = 3 + Math.floor(Math.random() * 2) // ซ้ำ 3-4 ครั้ง
+      for (let i = 0; i < modeFreq; i++) numbers.push(modeValue)
+
+      // เติมเลขอื่นๆ ให้ซ้ำน้อยกว่า mode
+      while (numbers.length < count) {
+        const v = Math.floor(Math.random() * 30) + 1
+        if (v === modeValue) continue
+        const freq = numbers.filter(n => n === v).length
+        if (freq >= modeFreq - 1) continue // ห้ามซ้ำเท่าหรือมากกว่า mode
+        numbers.push(v)
+      }
+
+      // สุ่มลำดับ
+      for (let i = numbers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [numbers[i], numbers[j]] = [numbers[j], numbers[i]]
+      }
+
+      return {
+        expression: `ข้อมูล: ${numbers.join(', ')}  หาฐานนิยม`,
+        correctAnswer: modeValue.toString(),
+        choices: [],
+        a: 0, b: 0, c: 0
+      }
+    } else {
+      // สร้างหาพิสัย
+      for (let i = 0; i < count; i++) {
+        numbers.push(Math.floor(Math.random() * 30) + 1)
+      }
+      // สุ่มลำดับ (ไม่เรียง)
+      for (let i = numbers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [numbers[i], numbers[j]] = [numbers[j], numbers[i]]
+      }
+      const range = Math.max(...numbers) - Math.min(...numbers)
+
+      return {
+        expression: `ข้อมูล: ${numbers.join(', ')}  หาพิสัย`,
+        correctAnswer: range.toString(),
         choices: [],
         a: 0, b: 0, c: 0
       }
@@ -2049,6 +2105,8 @@ export class MathQuestionGenerator {
         return this.generateExponentialQuestion(options.difficulty)
       case 'sequence_d_r':
         return this.generateSequenceDRQuestion(options.difficulty)
+      case 'stat_mode_range':
+        return this.generateStatModeRangeQuestion(options.difficulty)
       case 'equation':
         return this.generateEquationQuestion(options.difficulty)
       case 'power':
