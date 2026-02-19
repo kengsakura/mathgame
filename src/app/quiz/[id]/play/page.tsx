@@ -55,6 +55,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
   const studentName = searchParams.get('name') || 'นักเรียน'
   
   const [quiz, setQuiz] = useState<Quiz | null>(null)
+  const [keypadValue, setKeypadValue] = useState('')
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const scoreRef = useRef(0) // ref เพื่อกัน stale closure ตอนบันทึกคะแนน
   const [gameState, setGameState] = useState<GameState>({
@@ -137,6 +138,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
     if (!quiz) return
 
     if (gameState.currentQuestion < quiz.total_questions - 1) {
+      setKeypadValue('')
       setGameState(prev => ({
         ...prev,
         currentQuestion: prev.currentQuestion + 1,
@@ -215,7 +217,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
 
     // 2. ถ้ายังไม่ครบตามจำนวนที่ตั้งไว้ ให้สร้างเพิ่มด้วย Algorithm
     // เฉพาะ topic ที่ generator รองรับเท่านั้น (ไม่ใช่ custom topic)
-    const generatorTopics = ['power', 'root', 'polynomial', 'equation', 'derivative', 'integral', 'arithmetic_series', 'arithmetic_sequence', 'geometric_sequence', 'integer_add_sub', 'integer_multiply', 'exponential']
+    const generatorTopics = ['power', 'root', 'polynomial', 'equation', 'derivative', 'integral', 'arithmetic_series', 'arithmetic_sequence', 'geometric_sequence', 'integer_add_sub', 'integer_multiply', 'exponential', 'sequence_d_r']
     if (questions.length < quiz.total_questions && generatorTopics.includes(quiz.question_type)) {
       const needed = quiz.total_questions - questions.length
       const generated = generator.generateQuestions(needed, {
@@ -351,6 +353,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
       case 'integer_add_sub': return 'จงคำนวณการบวกลบจำนวนเต็มต่อไปนี้'
       case 'integer_multiply': return 'จงคำนวณการคูณจำนวนเต็มต่อไปนี้'
       case 'exponential': return 'จงแก้สมการเลขชี้กำลังต่อไปนี้'
+      case 'sequence_d_r': return 'จงหาค่า d หรือ r ของลำดับต่อไปนี้'
       default: return 'แก้โจทย์ต่อไปนี้'
     }
   }
@@ -642,33 +645,52 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
                   })}
                 </div>
                 ) : (
-                <div className="max-w-sm mx-auto">
-                  <form onSubmit={(e) => {
-                    e.preventDefault()
-                    const input = (e.currentTarget.elements.namedItem('answer') as HTMLInputElement)
-                    if (input.value.trim() && !gameState.showResult) {
-                      selectAnswer(input.value.trim())
-                    }
-                  }}>
-                    <div className="flex gap-3">
-                      <Input
-                        name="answer"
-                        type="number"
-                        placeholder="พิมพ์คำตอบ (ตัวเลข)"
-                        className="h-14 text-xl text-center font-mono"
-                        autoFocus
-                        disabled={gameState.showResult}
-                        autoComplete="off"
-                      />
-                      <Button
-                        type="submit"
-                        className="h-14 px-6 text-lg"
-                        disabled={gameState.showResult}
-                      >
-                        ตอบ
-                      </Button>
-                    </div>
-                  </form>
+                <div className="max-w-xs mx-auto">
+                  {/* จอแสดงคำตอบ */}
+                  <div className="h-14 mb-3 flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 text-3xl font-mono font-bold text-gray-900">
+                    {keypadValue || <span className="text-gray-400 text-lg">พิมพ์คำตอบ</span>}
+                  </div>
+                  {/* ปุ่มตัวเลข */}
+                  <div className="grid grid-cols-4 gap-2">
+                    {[1, 2, 3, 'minus', 4, 5, 6, 'clear', 7, 8, 9, 0].map((key) => {
+                      if (key === 'minus') return (
+                        <Button key="minus" variant="outline" className="h-12 text-xl font-bold"
+                          disabled={gameState.showResult}
+                          onClick={() => {
+                            if (keypadValue === '') setKeypadValue('-')
+                            else if (keypadValue === '-') setKeypadValue('')
+                            else if (keypadValue.startsWith('-')) setKeypadValue(keypadValue.slice(1))
+                            else setKeypadValue('-' + keypadValue)
+                          }}>
+                          +/−
+                        </Button>
+                      )
+                      if (key === 'clear') return (
+                        <Button key="clear" variant="outline" className="h-12 text-lg font-bold text-gray-500"
+                          disabled={gameState.showResult}
+                          onClick={() => setKeypadValue('')}>
+                          C
+                        </Button>
+                      )
+                      return (
+                        <Button key={key} variant="outline" className="h-12 text-xl font-mono font-bold"
+                          disabled={gameState.showResult}
+                          onClick={() => {
+                            if (keypadValue.replace('-', '').length < 5) {
+                              setKeypadValue(prev => prev + key.toString())
+                            }
+                          }}>
+                          {key}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                  {/* ปุ่มตอบ */}
+                  <Button className="w-full h-12 mt-3 text-lg font-bold"
+                    disabled={gameState.showResult || keypadValue === '' || keypadValue === '-'}
+                    onClick={() => selectAnswer(keypadValue)}>
+                    ตอบ
+                  </Button>
                 </div>
                 )}
                 {gameState.showResult && (

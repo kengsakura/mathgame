@@ -16,7 +16,7 @@ export interface Question {
   }
 }
 
-export type QuestionType = 'power' | 'root' | 'polynomial' | 'equation' | 'derivative' | 'integral' | 'arithmetic_series' | 'arithmetic_sequence' | 'geometric_sequence' | 'integer_add_sub' | 'integer_multiply' | 'exponential'
+export type QuestionType = 'power' | 'root' | 'polynomial' | 'equation' | 'derivative' | 'integral' | 'arithmetic_series' | 'arithmetic_sequence' | 'geometric_sequence' | 'integer_add_sub' | 'integer_multiply' | 'exponential' | 'sequence_d_r'
 
 export interface GeneratorOptions {
   difficulty: 'easy' | 'medium' | 'hard'
@@ -697,6 +697,58 @@ export class MathQuestionGenerator {
       correctAnswer: answer.toString(),
       choices: [],
       a: 0, b: 0, c: 0
+    }
+  }
+
+  // ===== หา d (ลำดับเลขคณิต) หรือ r (ลำดับเรขาคณิต) =====
+  private generateSequenceDRQuestion(difficulty: 'easy' | 'medium' | 'hard'): Question {
+    const type = Math.random() < 0.5 ? 'arithmetic' : 'geometric'
+
+    if (type === 'arithmetic') {
+      // หา d จากลำดับเลขคณิต
+      const termCount = 4 + Math.floor(Math.random() * 2) // 4-5 พจน์
+      let d: number
+      if (difficulty === 'easy') {
+        d = Math.floor(Math.random() * 9) + 1
+        if (Math.random() < 0.4) d = -d
+      } else {
+        d = Math.floor(Math.random() * 15) + 2
+        if (Math.random() < 0.5) d = -d
+      }
+      const a1 = Math.floor(Math.random() * 20) - 10
+      const terms = Array.from({ length: termCount }, (_, i) => a1 + i * d)
+      const termStr = terms.join(', ')
+      return {
+        expression: `ลำดับ ${termStr}, ... หา $d$`,
+        correctAnswer: d.toString(),
+        choices: [],
+        a: 0, b: 0, c: 0
+      }
+    } else {
+      // หา r จากลำดับเรขาคณิต
+      const termCount = 4
+      let r: number
+      if (difficulty === 'easy') {
+        r = Math.floor(Math.random() * 4) + 2 // 2-5
+        if (Math.random() < 0.3) r = -r
+      } else {
+        r = Math.floor(Math.random() * 5) + 2 // 2-6
+        if (Math.random() < 0.4) r = -r
+      }
+      const a1Choices = [1, 2, 3, -1, -2, -3]
+      const a1 = a1Choices[Math.floor(Math.random() * a1Choices.length)]
+      const terms = Array.from({ length: termCount }, (_, i) => a1 * Math.pow(r, i))
+      // ถ้าเลขใหญ่เกินไป สร้างใหม่
+      if (Math.abs(terms[terms.length - 1]) > 5000) {
+        return this.generateSequenceDRQuestion(difficulty)
+      }
+      const termStr = terms.join(', ')
+      return {
+        expression: `ลำดับ ${termStr}, ... หา $r$`,
+        correctAnswer: r.toString(),
+        choices: [],
+        a: 0, b: 0, c: 0
+      }
     }
   }
 
@@ -1995,6 +2047,8 @@ export class MathQuestionGenerator {
         return this.generateIntegerMultiplyQuestion(options.difficulty)
       case 'exponential':
         return this.generateExponentialQuestion(options.difficulty)
+      case 'sequence_d_r':
+        return this.generateSequenceDRQuestion(options.difficulty)
       case 'equation':
         return this.generateEquationQuestion(options.difficulty)
       case 'power':

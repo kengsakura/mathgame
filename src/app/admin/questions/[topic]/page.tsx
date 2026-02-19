@@ -20,6 +20,7 @@ const TOPIC_LABELS: Record<string, string> = {
   integer_add_sub: 'บวกลบจำนวนเต็ม',
   integer_multiply: 'คูณจำนวนเต็ม',
   exponential: 'สมการเลขชี้กำลัง',
+  sequence_d_r: 'หา d, r ของลำดับ',
   polynomial: 'แยกตัวประกอบ',
   equation: 'แก้สมการ',
   power: 'เลขยกกำลัง',
