@@ -34,6 +34,7 @@ const DEFAULT_TOPIC_LABELS: Record<string, string> = {
   stat_mode_range: 'ฐานนิยม & พิสัย',
   power: 'เลขยกกำลัง (a^n)',
   root: 'รากที่ n (√, ∛, ∜)',
+  times_table: 'สูตรคูณ (2-12 × 1-12)',
 }
 
 export default function AdminPage() {

@@ -16,7 +16,7 @@ export interface Question {
   }
 }
 
-export type QuestionType = 'power' | 'root' | 'polynomial' | 'equation' | 'derivative' | 'integral' | 'arithmetic_series' | 'arithmetic_sequence' | 'geometric_sequence' | 'integer_add_sub' | 'integer_multiply' | 'exponential' | 'sequence_d_r' | 'stat_mode_range'
+export type QuestionType = 'power' | 'root' | 'polynomial' | 'equation' | 'derivative' | 'integral' | 'arithmetic_series' | 'arithmetic_sequence' | 'geometric_sequence' | 'integer_add_sub' | 'integer_multiply' | 'exponential' | 'sequence_d_r' | 'stat_mode_range' | 'times_table'
 
 export interface GeneratorOptions {
   difficulty: 'easy' | 'medium' | 'hard'
@@ -2107,6 +2107,8 @@ export class MathQuestionGenerator {
         return this.generateSequenceDRQuestion(options.difficulty)
       case 'stat_mode_range':
         return this.generateStatModeRangeQuestion(options.difficulty)
+      case 'times_table':
+        return this.generateTimesTableQuestion()
       case 'equation':
         return this.generateEquationQuestion(options.difficulty)
       case 'power':
@@ -2223,5 +2225,45 @@ export class MathQuestionGenerator {
     }
 
     return questions
+  }
+
+  // ===== สูตรคูณ (2-12 × 1-12) =====
+  private generateTimesTableQuestion(): Question {
+    // จำนวนแรก 2-12, จำนวนที่สอง 1-12
+    const a = Math.floor(Math.random() * 11) + 2  // 2-12
+    const b = Math.floor(Math.random() * 12) + 1  // 1-12
+    const correctAnswer = a * b
+
+    // สร้างตัวเลือกผิดที่สมเหตุสมผล
+    const distractors = new Set<number>()
+    const candidates = [
+      a * (b + 1),
+      a * (b - 1),
+      (a + 1) * b,
+      (a - 1) * b,
+      a * b + a,
+      a * b - a,
+      a * b + b,
+      a * b - b,
+      a + b,
+    ]
+    for (const c of candidates) {
+      if (c !== correctAnswer && c > 0 && distractors.size < 3) {
+        distractors.add(c)
+      }
+    }
+    while (distractors.size < 3) {
+      const offset = Math.floor(Math.random() * 10) + 1
+      const candidate = correctAnswer + (Math.random() < 0.5 ? offset : -offset)
+      if (candidate !== correctAnswer && candidate > 0) {
+        distractors.add(candidate)
+      }
+    }
+
+    return {
+      expression: `$${a} \\times ${b} = ?$`,
+      correctAnswer: correctAnswer.toString(),
+      choices: this.shuffleArray([correctAnswer.toString(), ...Array.from(distractors).slice(0, 3).map(String)]),
+    }
   }
 }
