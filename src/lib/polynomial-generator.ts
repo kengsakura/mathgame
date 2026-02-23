@@ -2228,12 +2228,10 @@ export class MathQuestionGenerator {
   }
 
   // ===== สูตรคูณ (2-12 × 1-12) =====
-  private generateTimesTableQuestion(difficulty: 'easy' | 'medium' | 'hard'): Question {
-    // ง่าย: 2-6 × 1-6 | ปานกลาง: 2-9 × 1-9 | ยาก: 2-12 × 1-12
-    const maxA = difficulty === 'easy' ? 5 : difficulty === 'medium' ? 8 : 11
-    const maxB = difficulty === 'easy' ? 6 : difficulty === 'medium' ? 9 : 12
-    const a = Math.floor(Math.random() * maxA) + 2  // 2-(maxA+1)
-    const b = Math.floor(Math.random() * maxB) + 1  // 1-maxB
+  private generateTimesTableQuestion(_difficulty: 'easy' | 'medium' | 'hard'): Question {
+    // ทุกระดับใช้ช่วงเดียวกัน: 2-12 × 1-12
+    const a = Math.floor(Math.random() * 11) + 2  // 2-12
+    const b = Math.floor(Math.random() * 12) + 1  // 1-12
     const correctAnswer = a * b
 
     // สร้างตัวเลือกผิดที่สมเหตุสมผล
