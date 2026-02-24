@@ -20,6 +20,7 @@ const DEFAULT_TOPICS: Record<string, string> = {
   exponential: 'สมการเลขชี้กำลัง',
   sequence_d_r: 'หา d, r ของลำดับ',
   stat_mode_range: 'ฐานนิยม & พิสัย',
+  number_grid: 'เกมหาตัวเลข 1-36 (Grid)',
   power: 'เลขยกกำลัง',
   root: 'รากที่ n',
 }

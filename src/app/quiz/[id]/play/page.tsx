@@ -10,6 +10,7 @@ import { MathQuestionGenerator } from '@/lib/polynomial-generator'
 import type { Question } from '@/lib/polynomial-generator'
 import { Input } from '@/components/ui/input'
 import { Clock, User, Trophy } from 'lucide-react'
+import { NumberGridGame } from './number-grid-game'
 import 'katex/dist/katex.min.css'
 import { InlineMath } from 'react-katex'
 
@@ -357,6 +358,11 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
       case 'stat_mode_range': return 'จงหาฐานนิยมหรือพิสัยของข้อมูลต่อไปนี้'
       default: return 'แก้โจทย์ต่อไปนี้'
     }
+  }
+
+  // เกม number_grid ใช้ UI แยกต่างหาก
+  if (quiz && quiz.question_type === 'number_grid') {
+    return <NumberGridGame quiz={quiz} studentName={studentName} id={id} />
   }
 
   if (!quiz) {

@@ -32,6 +32,7 @@ const DEFAULT_TOPIC_LABELS: Record<string, string> = {
   exponential: 'สมการเลขชี้กำลัง (b^x = n)',
   sequence_d_r: 'หา d, r ของลำดับ',
   stat_mode_range: 'ฐานนิยม & พิสัย',
+  number_grid: 'เกมหาตัวเลข 1-36 (Grid)',
   power: 'เลขยกกำลัง (a^n)',
   root: 'รากที่ n (√, ∛, ∜)',
   times_table: 'สูตรคูณ (2-12 × 1-12)',
