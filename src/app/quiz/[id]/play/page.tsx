@@ -361,7 +361,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
   }
 
   // เกม number_grid ใช้ UI แยกต่างหาก
-  if (quiz && quiz.question_type === 'number_grid') {
+  if (quiz && quiz.question_type.startsWith('number_grid')) {
     return <NumberGridGame quiz={quiz} studentName={studentName} id={id} />
   }
 

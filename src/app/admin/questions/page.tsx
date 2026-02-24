@@ -20,7 +20,11 @@ const DEFAULT_TOPICS: Record<string, string> = {
   exponential: 'สมการเลขชี้กำลัง',
   sequence_d_r: 'หา d, r ของลำดับ',
   stat_mode_range: 'ฐานนิยม & พิสัย',
-  number_grid: 'เกมหาตัวเลข 1-36 (Grid)',
+  number_grid: 'Grid หาตัวเลข 1-36',
+  number_grid_even: 'Grid หาเลขคู่',
+  number_grid_odd: 'Grid หาเลขคี่',
+  number_grid_x3: 'Grid หาพหุคูณ 3',
+  number_grid_x5: 'Grid หาพหุคูณ 5',
   power: 'เลขยกกำลัง',
   root: 'รากที่ n',
 }
