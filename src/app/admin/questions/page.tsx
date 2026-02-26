@@ -10,6 +10,7 @@ import Link from 'next/link'
 const DEFAULT_TOPICS: Record<string, string> = {
   derivative: 'อนุพันธ์ (Derivative)',
   integral: 'ปริพันธ์ไม่จำกัดเขต (Integral)',
+  definite_integral: 'ปริพันธ์จำกัดเขต',
   arithmetic_series: 'อนุกรมเลขคณิต (Arithmetic Series)',
   arithmetic_sequence: 'ลำดับเลขคณิต (Arithmetic Sequence)',
   polynomial: 'แยกตัวประกอบ',

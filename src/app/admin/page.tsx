@@ -22,6 +22,7 @@ interface Quiz {
 const DEFAULT_TOPIC_LABELS: Record<string, string> = {
   derivative: 'อนุพันธ์ของฟังก์ชัน (f\'(x))',
   integral: 'ปริพันธ์ไม่จำกัดเขต (∫f(x)dx)',
+  definite_integral: 'ปริพันธ์จำกัดเขต (∫_a^b f(x)dx)',
   arithmetic_series: 'อนุกรมเลขคณิต (Sn)',
   arithmetic_sequence: 'ลำดับเลขคณิต (aₙ, d)',
   polynomial: 'แยกตัวประกอบพหุนาม',

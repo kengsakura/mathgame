@@ -356,6 +356,7 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
       case 'exponential': return 'จงแก้สมการเลขชี้กำลังต่อไปนี้'
       case 'sequence_d_r': return 'จงหาค่า d หรือ r ของลำดับต่อไปนี้'
       case 'stat_mode_range': return 'จงหาฐานนิยมหรือพิสัยของข้อมูลต่อไปนี้'
+      case 'definite_integral': return 'จงคำนวณปริพันธ์จำกัดเขตต่อไปนี้'
       default: return 'แก้โจทย์ต่อไปนี้'
     }
   }
