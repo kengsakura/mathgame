@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { User, Target, RotateCcw } from 'lucide-react'
@@ -10,9 +11,9 @@ import { Progress } from '@/components/ui/progress'
 // time_per_question = targetSum, passing_threshold = % ของคำตอบที่เป็นไปได้ในกริด
 // difficulty: easy=2 ตัว, medium=3 ตัว, hard=4 ตัว
 
-const COLS = 7
-const ROWS = 10
-const TOTAL = COLS * ROWS // 70
+const COLS = 9
+const ROWS = 13
+const TOTAL = COLS * ROWS // 117
 
 interface Quiz {
   id: string
@@ -304,6 +305,20 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
     window.addEventListener('pointerup', up)
     return () => window.removeEventListener('pointerup', up)
   }, [])
+
+  // บันทึกคะแนนเมื่อจบเกม
+  useEffect(() => {
+    if (phase !== 'won' && phase !== 'over') return
+    supabase.from('quiz_attempts').insert({
+      quiz_id: id,
+      student_name: studentName,
+      score: scoreRef.current,
+      total_questions: minPathsRef.current,
+      time_taken: Math.round((Date.now() - startTimeRef.current) / 1000),
+    }).then(({ error }) => {
+      if (error) console.error('Error saving result:', error)
+    })
+  }, [phase, id, studentName])
 
   // ===== Cell color =====
   function cellClass(cell: Cell) {
