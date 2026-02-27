@@ -11,6 +11,7 @@ import type { Question } from '@/lib/polynomial-generator'
 import { Input } from '@/components/ui/input'
 import { Clock, User, Trophy } from 'lucide-react'
 import { NumberGridGame } from './number-grid-game'
+import { NumberPathGame } from './number-path-game'
 import 'katex/dist/katex.min.css'
 import { InlineMath } from 'react-katex'
 
@@ -364,6 +365,11 @@ export default function QuizPlayPage({ params }: { params: Promise<{ id: string 
   // เกม number_grid ใช้ UI แยกต่างหาก
   if (quiz && quiz.question_type.startsWith('number_grid')) {
     return <NumberGridGame quiz={quiz} studentName={studentName} id={id} />
+  }
+
+  // เกม number_path ใช้ UI แยกต่างหาก
+  if (quiz && quiz.question_type === 'number_path') {
+    return <NumberPathGame quiz={quiz} studentName={studentName} id={id} />
   }
 
   if (!quiz) {

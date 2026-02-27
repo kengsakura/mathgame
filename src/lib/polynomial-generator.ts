@@ -16,7 +16,7 @@ export interface Question {
   }
 }
 
-export type QuestionType = 'power' | 'root' | 'polynomial' | 'equation' | 'derivative' | 'integral' | 'arithmetic_series' | 'arithmetic_sequence' | 'geometric_sequence' | 'integer_add_sub' | 'integer_multiply' | 'exponential' | 'sequence_d_r' | 'stat_mode_range' | 'times_table' | 'number_grid' | 'number_grid_even' | 'number_grid_odd' | 'number_grid_x3' | 'number_grid_x5' | 'definite_integral'
+export type QuestionType = 'power' | 'root' | 'polynomial' | 'equation' | 'derivative' | 'integral' | 'arithmetic_series' | 'arithmetic_sequence' | 'geometric_sequence' | 'integer_add_sub' | 'integer_multiply' | 'exponential' | 'sequence_d_r' | 'stat_mode_range' | 'times_table' | 'number_grid' | 'number_grid_even' | 'number_grid_odd' | 'number_grid_x3' | 'number_grid_x5' | 'definite_integral' | 'number_path'
 
 export interface GeneratorOptions {
   difficulty: 'easy' | 'medium' | 'hard'
