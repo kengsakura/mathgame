@@ -69,6 +69,43 @@ function countValidPaths(cells: Cell[], pathLen: number, target: number): number
   return count
 }
 
+// Simulate greedy: นับว่าจริงๆ แล้วหาได้สูงสุดกี่เส้นทาง (lower bound ที่ทำได้จริง)
+function simulateAchievable(initialCells: Cell[], pathLen: number, target: number): number {
+  const cells = initialCells.map(c => ({ ...c }))
+  let found = 0
+
+  function dfsFind(idx: number, visited: Set<number>, sum: number, depth: number): number[] | null {
+    if (depth === pathLen) return sum === target ? Array.from(visited) : null
+    const row = Math.floor(idx / COLS), col = idx % COLS
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue
+        const nr = row + dr, nc = col + dc
+        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue
+        const ni = nr * COLS + nc
+        if (visited.has(ni) || cells[ni].state === 'used') continue
+        visited.add(ni)
+        const res = dfsFind(ni, visited, sum + cells[ni].value, depth + 1)
+        if (res) return res
+        visited.delete(ni)
+      }
+    }
+    return null
+  }
+
+  // สุ่มลำดับ start cells เพื่อให้ได้ผลหลากหลาย
+  const starts = Array.from({ length: TOTAL }, (_, i) => i).sort(() => Math.random() - 0.5)
+  for (const start of starts) {
+    if (cells[start].state === 'used') continue
+    const path = dfsFind(start, new Set([start]), cells[start].value, 1)
+    if (path) {
+      path.forEach(i => { cells[i] = { ...cells[i], state: 'used' } })
+      found++
+    }
+  }
+  return found
+}
+
 // DFS: มีทางที่ยังหาได้อยู่ไหม
 function hasValidPath(cells: Cell[], pathLen: number, target: number): boolean {
   function dfs(idx: number, visited: Set<number>, sum: number, depth: number): boolean {
@@ -121,24 +158,27 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
   const syncPath = (p: number[]) => { pathRef.current = p; setPath([...p]) }
 
   const startGame = useCallback(() => {
-    // สร้างกริดใหม่จนกว่าจะมีคำตอบอย่างน้อย 5 เส้นทาง
+    // สร้างกริดใหม่จนกว่าจะ simulate ได้อย่างน้อย 3 เส้นทาง
     let c: Cell[]
     let total: number
+    let achievable: number
     let attempts = 0
     do {
       c = initCells()
       total = countValidPaths(c, pathLen, targetSum)
+      achievable = total > 0 ? simulateAchievable(c, pathLen, targetSum) : 0
       attempts++
-    } while (total < 5 && attempts < 100)
+    } while (achievable < 3 && attempts < 100)
 
-    const minP = Math.max(1, Math.ceil(total * quiz.passing_threshold / 100))
+    // minPaths = % ของที่ simulate ได้จริง (ไม่ใช่ total overlapping paths)
+    const minP = Math.max(1, Math.ceil(achievable * quiz.passing_threshold / 100))
     scoreRef.current = 0
     minPathsRef.current = minP
     cellsRef.current = c
     pathRef.current = []
     flashRef.current = false
     setScore(0)
-    setTotalPossible(total)
+    setTotalPossible(achievable) // แสดงเป็น "หาได้สูงสุดประมาณ X"
     setMinPaths(minP)
     setCells([...c])
     setPath([])
@@ -332,7 +372,7 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
             <div className="text-center space-y-2">
               <div className="text-5xl font-black text-purple-600">{score}</div>
               <div className="text-gray-500 text-sm">
-                คำตอบที่หาได้ จาก <strong className="text-purple-700">{totalPossible}</strong> ที่เป็นไปได้ในกริดนี้
+                คำตอบที่หาได้ จากประมาณ <strong className="text-purple-700">{totalPossible}</strong> ที่หาได้ในกริดนี้
               </div>
               <div className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
                 passed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
@@ -366,7 +406,7 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
           <div className="text-sm font-bold text-purple-700">
             หาได้ <span className="text-2xl">{score}</span>
             <span className="text-gray-400 text-xs font-normal"> / เป้า {minPaths}</span>
-            <span className="text-gray-300 text-xs font-normal"> (จาก {totalPossible})</span>
+            <span className="text-gray-300 text-xs font-normal"> (~{totalPossible})</span>
           </div>
           <div className="text-right">
             <div className="text-xs text-gray-500">เป้าหมาย</div>
