@@ -142,9 +142,7 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
   const [cells, setCells] = useState<Cell[]>([])
   const [path, setPath] = useState<number[]>([])
   const [score, setScore] = useState(0)
-  const [startTime, setStartTime] = useState(0)
   const [timeTaken, setTimeTaken] = useState(0)
-  const [totalPossible, setTotalPossible] = useState(0)
   const [minPaths, setMinPaths] = useState(0)
 
   const cellsRef = useRef<Cell[]>([])
@@ -153,6 +151,7 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
   const isDragging = useRef(false)
   const scoreRef = useRef(0)
   const minPathsRef = useRef(0)
+  const startTimeRef = useRef(0)
 
   const syncCells = (c: Cell[]) => { cellsRef.current = c; setCells([...c]) }
   const syncPath = (p: number[]) => { pathRef.current = p; setPath([...p]) }
@@ -174,15 +173,14 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
     const minP = Math.max(1, Math.ceil(achievable * quiz.passing_threshold / 100))
     scoreRef.current = 0
     minPathsRef.current = minP
+    startTimeRef.current = Date.now()
     cellsRef.current = c
     pathRef.current = []
     flashRef.current = false
     setScore(0)
-    setTotalPossible(achievable) // แสดงเป็น "หาได้สูงสุดประมาณ X"
     setMinPaths(minP)
     setCells([...c])
     setPath([])
-    setStartTime(Date.now())
     setPhase('playing')
   }, [pathLen, targetSum, quiz.passing_threshold])
 
@@ -234,13 +232,13 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
         setScore(newScore)
 
         if (newScore >= minPathsRef.current) {
-          setTimeTaken(Math.round((Date.now() - startTime) / 1000))
-          setTimeout(() => setPhase('won'), 200)
+          setTimeTaken(Math.round((Date.now() - startTimeRef.current) / 1000))
+          setPhase('won')
           return
         }
         if (!hasValidPath(newCells, pathLen, targetSum)) {
-          setTimeTaken(Math.round((Date.now() - startTime) / 1000))
-          setTimeout(() => setPhase('over'), 300)
+          setTimeTaken(Math.round((Date.now() - startTimeRef.current) / 1000))
+          setPhase('over')
         }
       } else {
         const resetCells = cellsRef.current.map((cell, i) =>
@@ -251,7 +249,7 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
         flashRef.current = false
       }
     }, ok ? 500 : 400)
-  }, [pathLen, targetSum, startTime])
+  }, [pathLen, targetSum])
 
   // ===== Cell interaction =====
   const handleCellInteract = useCallback((idx: number) => {
@@ -340,7 +338,7 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
                 หา {pathLen} ตัวที่ติดกัน รวมได้ <span className="text-orange-500">{targetSum}</span>
               </p>
               <p className="text-sm text-gray-500">
-                ต้องผ่าน <strong>{quiz.passing_threshold}%</strong> ของคำตอบที่เป็นไปได้ในกริด
+                ต้องหาให้ได้ <strong>{minPaths || '...'}</strong> คำตอบเพื่อผ่าน
               </p>
             </div>
             <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600 space-y-1">
@@ -371,16 +369,14 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
           <CardContent className="space-y-4">
             <div className="text-center space-y-2">
               <div className="text-5xl font-black text-purple-600">{score}</div>
-              <div className="text-gray-500 text-sm">
-                คำตอบที่หาได้ จากประมาณ <strong className="text-purple-700">{totalPossible}</strong> ที่หาได้ในกริดนี้
-              </div>
+              <div className="text-gray-500 text-sm">คำตอบที่หาได้</div>
               <div className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
                 passed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
               }`}>
                 {passed ? '✅ ผ่านเกณฑ์' : `❌ ไม่ผ่าน (ต้องการ ${minPaths})`}
               </div>
             </div>
-            <Progress value={Math.min(100, Math.round(score / Math.max(1, totalPossible) * 100))} className="h-2" />
+            <Progress value={Math.min(100, Math.round(score / Math.max(1, minPaths) * 100))} className="h-2" />
             <p className="text-center text-xs text-gray-400">
               เวลา: {Math.floor(timeTaken / 60)}:{(timeTaken % 60).toString().padStart(2, '0')}
             </p>
@@ -406,7 +402,6 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
           <div className="text-sm font-bold text-purple-700">
             หาได้ <span className="text-2xl">{score}</span>
             <span className="text-gray-400 text-xs font-normal"> / เป้า {minPaths}</span>
-            <span className="text-gray-300 text-xs font-normal"> (~{totalPossible})</span>
           </div>
           <div className="text-right">
             <div className="text-xs text-gray-500">เป้าหมาย</div>
@@ -415,7 +410,7 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
         </div>
 
         {/* Progress */}
-        <Progress value={Math.min(100, score / Math.max(1, minPaths) * 100)} className="h-1.5 mb-2" />
+        <Progress value={minPaths > 0 ? Math.min(100, score / minPaths * 100) : 0} className="h-1.5 mb-2" />
 
         {/* Path status */}
         <div className="flex items-center justify-between mb-2 bg-white/70 rounded-lg px-3 py-1.5 text-sm">
