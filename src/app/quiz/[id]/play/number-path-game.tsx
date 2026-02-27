@@ -1,26 +1,25 @@
 'use client'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Trophy, User, Target, RotateCcw } from 'lucide-react'
+import { User, Target, RotateCcw } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 
 // ====== Config ======
-// ใช้ quiz fields แทน: time_per_question = targetSum, total_questions = minPaths
+// time_per_question = targetSum, passing_threshold = % ของคำตอบที่เป็นไปได้ในกริด
 // difficulty: easy=2 ตัว, medium=3 ตัว, hard=4 ตัว
 
-const COLS = 5
+const COLS = 7
 const ROWS = 10
-const TOTAL = COLS * ROWS // 50
+const TOTAL = COLS * ROWS // 70
 
 interface Quiz {
   id: string
   name: string
   time_per_question: number  // ↔ target sum
-  total_questions: number    // ↔ min paths to pass
-  passing_threshold: number
+  total_questions: number
+  passing_threshold: number  // % of totalPossible needed to pass
   difficulty: 'easy' | 'medium' | 'hard'
 }
 
@@ -41,6 +40,33 @@ function isAdjacent(a: number, b: number) {
   const ra = Math.floor(a / COLS), ca = a % COLS
   const rb = Math.floor(b / COLS), cb = b % COLS
   return Math.abs(ra - rb) <= 1 && Math.abs(ca - cb) <= 1 && a !== b
+}
+
+// นับจำนวนเส้นทางที่ถูกต้องทั้งหมดในกริด (ordered paths)
+function countValidPaths(cells: Cell[], pathLen: number, target: number): number {
+  let count = 0
+  function dfs(idx: number, visited: Set<number>, sum: number, depth: number) {
+    if (depth === pathLen) { if (sum === target) count++; return }
+    const row = Math.floor(idx / COLS), col = idx % COLS
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue
+        const nr = row + dr, nc = col + dc
+        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue
+        const ni = nr * COLS + nc
+        if (visited.has(ni) || cells[ni].state === 'used') continue
+        visited.add(ni)
+        dfs(ni, visited, sum + cells[ni].value, depth + 1)
+        visited.delete(ni)
+      }
+    }
+  }
+  for (let i = 0; i < TOTAL; i++) {
+    if (cells[i].state === 'used') continue
+    const v = new Set<number>([i])
+    dfs(i, v, cells[i].value, 1)
+  }
+  return count
 }
 
 // DFS: มีทางที่ยังหาได้อยู่ไหม
@@ -74,7 +100,6 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
   const router = useRouter()
   const pathLen = getPathLength(quiz.difficulty)
   const targetSum = quiz.time_per_question
-  const minPaths = quiz.total_questions
 
   const [phase, setPhase] = useState<Phase>('ready')
   const [cells, setCells] = useState<Cell[]>([])
@@ -82,29 +107,57 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
   const [score, setScore] = useState(0)
   const [startTime, setStartTime] = useState(0)
   const [timeTaken, setTimeTaken] = useState(0)
-  const [noPathLeft, setNoPathLeft] = useState(false)
+  const [totalPossible, setTotalPossible] = useState(0)
+  const [minPaths, setMinPaths] = useState(0)
 
   const cellsRef = useRef<Cell[]>([])
   const pathRef = useRef<number[]>([])
   const flashRef = useRef(false)
   const isDragging = useRef(false)
   const scoreRef = useRef(0)
+  const minPathsRef = useRef(0)
 
   const syncCells = (c: Cell[]) => { cellsRef.current = c; setCells([...c]) }
   const syncPath = (p: number[]) => { pathRef.current = p; setPath([...p]) }
 
   const startGame = useCallback(() => {
-    const c = initCells()
+    // สร้างกริดใหม่จนกว่าจะมีคำตอบอย่างน้อย 5 เส้นทาง
+    let c: Cell[]
+    let total: number
+    let attempts = 0
+    do {
+      c = initCells()
+      total = countValidPaths(c, pathLen, targetSum)
+      attempts++
+    } while (total < 5 && attempts < 100)
+
+    const minP = Math.max(1, Math.ceil(total * quiz.passing_threshold / 100))
     scoreRef.current = 0
+    minPathsRef.current = minP
     cellsRef.current = c
     pathRef.current = []
     flashRef.current = false
     setScore(0)
+    setTotalPossible(total)
+    setMinPaths(minP)
     setCells([...c])
     setPath([])
-    setNoPathLeft(false)
     setStartTime(Date.now())
     setPhase('playing')
+  }, [pathLen, targetSum, quiz.passing_threshold])
+
+  // ถอยหลังไปถึง idx (inclusive) — ลบเซลล์หลัง idx ออกจาก path
+  const backtrackTo = useCallback((idx: number) => {
+    const p = pathRef.current
+    const pos = p.indexOf(idx)
+    if (pos === -1) return
+    const removed = p.slice(pos + 1)
+    const newPath = p.slice(0, pos + 1)
+    const c = cellsRef.current.map((cell, i) =>
+      removed.includes(i) ? { ...cell, state: 'unused' as const } : cell
+    )
+    syncCells(c)
+    syncPath(newPath)
   }, [])
 
   const clearPath = useCallback(() => {
@@ -140,14 +193,12 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
         scoreRef.current = newScore
         setScore(newScore)
 
-        if (newScore >= minPaths) {
+        if (newScore >= minPathsRef.current) {
           setTimeTaken(Math.round((Date.now() - startTime) / 1000))
           setTimeout(() => setPhase('won'), 200)
           return
         }
-        // Check if no paths remain
         if (!hasValidPath(newCells, pathLen, targetSum)) {
-          setNoPathLeft(true)
           setTimeTaken(Math.round((Date.now() - startTime) / 1000))
           setTimeout(() => setPhase('over'), 300)
         }
@@ -160,7 +211,7 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
         flashRef.current = false
       }
     }, ok ? 500 : 400)
-  }, [pathLen, targetSum, minPaths, startTime])
+  }, [pathLen, targetSum, startTime])
 
   // ===== Cell interaction =====
   const handleCellInteract = useCallback((idx: number) => {
@@ -170,22 +221,14 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
 
     const p = pathRef.current
 
-    // Tap last cell → backtrack
-    if (p.length > 0 && p[p.length - 1] === idx) {
-      const newPath = p.slice(0, -1)
-      const c = cellsRef.current.map((cell, i) =>
-        i === idx ? { ...cell, state: 'unused' as const } : cell
-      )
-      syncCells(c)
-      syncPath(newPath)
+    // กดตัวที่อยู่ใน path แล้ว → ถอยหลังไปถึงตัวนั้น (inclusive)
+    if (p.includes(idx)) {
+      backtrackTo(idx)
       return
     }
-    // Already in path (not last) → ignore
-    if (p.includes(idx)) return
-    // Must be adjacent to last
+    // ต้องต่อเนื่องจากตัวสุดท้าย
     if (p.length > 0 && !isAdjacent(p[p.length - 1], idx)) return
 
-    // Add to path
     const newPath = [...p, idx]
     const c = cellsRef.current.map((cell, i) =>
       i === idx ? { ...cell, state: 'path' as const } : cell
@@ -196,7 +239,7 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
     if (newPath.length === pathLen) {
       submitPath(newPath)
     }
-  }, [phase, pathLen, submitPath])
+  }, [phase, pathLen, submitPath, backtrackTo])
 
   // ===== Pointer events for drag =====
   const onCellPointerDown = useCallback((e: React.PointerEvent, idx: number) => {
@@ -206,13 +249,18 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
   }, [handleCellInteract])
 
   const onCellPointerEnter = useCallback((idx: number) => {
-    if (!isDragging.current) return
+    if (!isDragging.current || flashRef.current) return
+    const p = pathRef.current
+    // ลากกลับมาที่ตัวที่อยู่ใน path → ถอยหลัง
+    if (p.includes(idx)) {
+      backtrackTo(idx)
+      return
+    }
     handleCellInteract(idx)
-  }, [handleCellInteract])
+  }, [handleCellInteract, backtrackTo])
 
   const onPointerUp = useCallback(() => { isDragging.current = false }, [])
 
-  // Reset drag on pointer leave grid
   useEffect(() => {
     const up = () => { isDragging.current = false }
     window.addEventListener('pointerup', up)
@@ -220,14 +268,12 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
   }, [])
 
   // ===== Cell color =====
-  function cellClass(cell: Cell, idx: number) {
-    const inPath = cell.state === 'path'
-    const pathPos = path.indexOf(idx)
-    const base = 'aspect-square rounded-md flex items-center justify-center font-bold select-none transition-all duration-100 cursor-pointer text-base'
-    if (cell.state === 'used') return `${base} bg-gray-200 text-gray-400 cursor-default opacity-50`
+  function cellClass(cell: Cell) {
+    const base = 'aspect-square rounded-md flex items-center justify-center font-bold select-none transition-all duration-100 cursor-pointer text-sm'
+    if (cell.state === 'used') return `${base} bg-gray-200 text-gray-400 cursor-default opacity-40`
     if (cell.state === 'ok') return `${base} bg-green-400 text-white scale-110 shadow-lg`
     if (cell.state === 'err') return `${base} bg-red-400 text-white scale-95`
-    if (inPath) return `${base} bg-blue-500 text-white shadow-md scale-105 ring-2 ring-blue-300`
+    if (cell.state === 'path') return `${base} bg-blue-500 text-white shadow-md scale-105 ring-2 ring-blue-300`
     return `${base} bg-white text-gray-800 border border-gray-200 hover:bg-blue-50 active:scale-95`
   }
 
@@ -253,13 +299,14 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
               <p className="text-2xl font-black text-purple-700">
                 หา {pathLen} ตัวที่ติดกัน รวมได้ <span className="text-orange-500">{targetSum}</span>
               </p>
-              <p className="text-sm text-gray-500">ต้องหาให้ได้ <strong>{minPaths}</strong> คำตอบเพื่อผ่าน</p>
+              <p className="text-sm text-gray-500">
+                ต้องผ่าน <strong>{quiz.passing_threshold}%</strong> ของคำตอบที่เป็นไปได้ในกริด
+              </p>
             </div>
             <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600 space-y-1">
               <p>• ลากหรือกดตัวเลขที่ <strong>ติดกัน</strong> (8 ทิศทาง) ทีละ {pathLen} ตัว</p>
-              <p>• ถ้าผลรวม = {targetSum} → ✅ เซลล์นั้นหายออกไป</p>
-              <p>• ถ้าผลรวม ≠ {targetSum} → ❌ เริ่มใหม่</p>
-              <p>• กดตัวสุดท้ายอีกครั้งเพื่อถอยหลัง</p>
+              <p>• กดตัวใน path เพื่อถอยกลับไปถึงตัวนั้น</p>
+              <p>• ผลรวม = {targetSum} → ✅  |  ≠ {targetSum} → ❌ เริ่มใหม่</p>
               <p>• ไม่มีกำหนดเวลา!</p>
             </div>
             <Button onClick={startGame} className="w-full bg-purple-600 hover:bg-purple-700" size="lg">
@@ -278,26 +325,25 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
         <Card className="max-w-sm w-full border-0 bg-white/70 backdrop-blur-sm">
           <CardHeader className="text-center pb-2">
-            <div className="text-5xl mb-2">{passed ? '🏆' : noPathLeft ? '🔍' : '💪'}</div>
+            <div className="text-5xl mb-2">{passed ? '🏆' : '🔍'}</div>
             <h1 className="text-2xl font-bold">{passed ? 'ผ่านแล้ว!' : 'หาไม่ได้แล้ว'}</h1>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-center space-y-2">
               <div className="text-5xl font-black text-purple-600">{score}</div>
-              <div className="text-gray-500 text-sm">คำตอบที่หาได้ (เป้าหมาย {minPaths})</div>
-              {noPathLeft && !passed && (
-                <p className="text-sm text-orange-600 bg-orange-50 rounded-lg p-2">
-                  ไม่มีทางที่เหลือแล้ว หาได้ {score}/{minPaths}
-                </p>
-              )}
+              <div className="text-gray-500 text-sm">
+                คำตอบที่หาได้ จาก <strong className="text-purple-700">{totalPossible}</strong> ที่เป็นไปได้ในกริดนี้
+              </div>
               <div className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
                 passed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
               }`}>
-                {passed ? '✅ ผ่านเกณฑ์' : '❌ ไม่ผ่านเกณฑ์'}
+                {passed ? '✅ ผ่านเกณฑ์' : `❌ ไม่ผ่าน (ต้องการ ${minPaths})`}
               </div>
             </div>
-            <Progress value={Math.min(100, Math.round(score / minPaths * 100))} className="h-2" />
-            <p className="text-center text-xs text-gray-400">เวลา: {Math.floor(timeTaken / 60)}:{(timeTaken % 60).toString().padStart(2, '0')}</p>
+            <Progress value={Math.min(100, Math.round(score / Math.max(1, totalPossible) * 100))} className="h-2" />
+            <p className="text-center text-xs text-gray-400">
+              เวลา: {Math.floor(timeTaken / 60)}:{(timeTaken % 60).toString().padStart(2, '0')}
+            </p>
             <div className="grid grid-cols-2 gap-3">
               <Button variant="outline" onClick={startGame}>
                 <RotateCcw className="h-4 w-4 mr-1" /> เล่นใหม่
@@ -313,13 +359,14 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
   // ===== PLAYING =====
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-sm mx-auto px-2 py-3">
+      <div className="max-w-md mx-auto px-2 py-3">
 
         {/* Header */}
         <div className="flex justify-between items-center mb-2">
           <div className="text-sm font-bold text-purple-700">
             หาได้ <span className="text-2xl">{score}</span>
             <span className="text-gray-400 text-xs font-normal"> / เป้า {minPaths}</span>
+            <span className="text-gray-300 text-xs font-normal"> (จาก {totalPossible})</span>
           </div>
           <div className="text-right">
             <div className="text-xs text-gray-500">เป้าหมาย</div>
@@ -328,7 +375,7 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
         </div>
 
         {/* Progress */}
-        <Progress value={Math.min(100, score / minPaths * 100)} className="h-1.5 mb-2" />
+        <Progress value={Math.min(100, score / Math.max(1, minPaths) * 100)} className="h-1.5 mb-2" />
 
         {/* Path status */}
         <div className="flex items-center justify-between mb-2 bg-white/70 rounded-lg px-3 py-1.5 text-sm">
@@ -336,22 +383,23 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
             เลือก: <strong className="text-blue-600">{path.length}</strong> / {pathLen} ตัว
           </div>
           <div>
-            รวม: <strong className={`${currentSum > targetSum ? 'text-red-500' : currentSum === targetSum && path.length === pathLen ? 'text-green-600' : 'text-gray-800'}`}>
+            รวม: <strong className={`${
+              currentSum > targetSum ? 'text-red-500' :
+              currentSum === targetSum && path.length === pathLen ? 'text-green-600' :
+              'text-gray-800'
+            }`}>
               {path.length > 0 ? currentSum : '-'}
             </strong>
             {' / '}{targetSum}
           </div>
           {path.length > 0 && (
-            <button
-              className="text-xs text-gray-400 hover:text-gray-600 underline"
-              onClick={clearPath}
-            >
+            <button className="text-xs text-gray-400 hover:text-gray-600 underline" onClick={clearPath}>
               ล้าง
             </button>
           )}
         </div>
 
-        {/* Grid 5×10 */}
+        {/* Grid 7×10 */}
         <div
           className="grid gap-1"
           style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)` }}
@@ -360,7 +408,7 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
           {cells.map((cell, idx) => (
             <div
               key={idx}
-              className={cellClass(cell, idx)}
+              className={cellClass(cell)}
               style={{ touchAction: 'none' }}
               onPointerDown={(e) => onCellPointerDown(e, idx)}
               onPointerEnter={() => onCellPointerEnter(idx)}
@@ -370,7 +418,7 @@ export function NumberPathGame({ quiz, studentName, id }: Props) {
           ))}
         </div>
 
-        {/* Path sequence display */}
+        {/* Path sequence */}
         {path.length > 0 && (
           <div className="mt-2 text-center text-xs text-gray-400">
             {path.map(i => cellsRef.current[i]?.value ?? '?').join(' + ')} = {currentSum}
